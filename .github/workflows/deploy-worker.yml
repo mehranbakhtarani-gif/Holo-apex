@@ -41,6 +41,36 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Validate Worker bundle
         run: bunx wrangler deploy --dry-run
+      - name: Smoke test Worker routes locally
+        shell: bash
+        run: |
+          set -euo pipefail
+          bunx wrangler dev --local --ip 127.0.0.1 --port 8787 > /tmp/holo-worker.log 2>&1 &
+          WORKER_PID=$!
+          trap 'kill "$WORKER_PID" 2>/dev/null || true' EXIT
+          READY=0
+          for attempt in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:8787/api/health > /tmp/holo-health.json; then
+              READY=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$READY" -ne 1 ]; then
+            cat /tmp/holo-worker.log
+            echo "::error::Worker did not become ready"
+            exit 1
+          fi
+          grep -q '"status":"ok"' /tmp/holo-health.json
+          BAD_JSON_STATUS=$(curl --silent --output /tmp/holo-bad-json.json --write-out '%{http_code}' \
+            -X POST http://127.0.0.1:8787/api/supabase/sync \
+            -H 'Content-Type: application/json' --data-binary '{"broken":')
+          test "$BAD_JSON_STATUS" = "400"
+          CONFIG_STATUS=$(curl --silent --output /tmp/holo-valid-json.json --write-out '%{http_code}' \
+            -X POST http://127.0.0.1:8787/api/supabase/sync \
+            -H 'Content-Type: application/json' --data-binary '{"snapshotJson":"{}"}')
+          test "$CONFIG_STATUS" = "503"
+          grep -q 'NOT_CONFIGURED' /tmp/holo-valid-json.json
 
   deploy:
     if: ${{ github.event_name != 'pull_request' && (github.event_name == 'workflow_dispatch' || vars.CLOUDFLARE_ACCOUNT_ID != '') }}
