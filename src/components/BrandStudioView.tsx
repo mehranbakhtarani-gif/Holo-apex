@@ -1,3 +1,4 @@
+import { apiUrl } from '../lib/apiBase';
 import React, { useState } from 'react';
 import { AlertCircle, Download, Image as ImageIcon, Loader2, Wand2 } from 'lucide-react';
 
@@ -51,7 +52,7 @@ export const BrandStudioView: React.FC = () => {
     setErrorMsg(null);
 
     try {
-      const res = await fetch('/api/images/generate', {
+      const res = await fetch(apiUrl('/api/images/generate'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
