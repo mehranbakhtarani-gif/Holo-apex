@@ -1,3 +1,4 @@
+import { apiUrl } from './apiBase';
 import type { CloudBackupMeta } from './firebaseCloudBackup';
 
 export type ConflictResolutionPolicy = 'last_write_wins' | 'first_write_wins';
@@ -191,7 +192,7 @@ export function saveLastSupabaseSyncAt(shamsiStamp: string): void {
 
 export async function fetchSupabaseServerStatus(): Promise<SupabaseStatusInfo> {
   try {
-    const resp = await fetch('/api/supabase/status', {
+    const resp = await fetch(apiUrl('/api/supabase/status', {
       method: 'GET',
       cache: 'no-store',
     });
@@ -228,7 +229,7 @@ export async function fetchSupabaseServerStatus(): Promise<SupabaseStatusInfo> {
 
 export async function fetchSupabaseBackups(idToken: string): Promise<SupabaseBackupsListResponse> {
   try {
-    const resp = await fetch('/api/supabase/backups', {
+    const resp = await fetch(apiUrl('/api/supabase/backups', {
       method: 'GET',
       headers: { Authorization: `Bearer ${idToken}` },
       cache: 'no-store',
@@ -266,7 +267,7 @@ export async function deleteSupabaseBackup(
   backupId: string
 ): Promise<{ ok: boolean; backups?: CloudBackupMeta[]; error?: string }> {
   try {
-    const resp = await fetch(`/api/supabase/backups/${encodeURIComponent(backupId)}`, {
+    const resp = await fetch(apiUrl(`/api/supabase/backups/${encodeURIComponent(backupId)}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${idToken}` },
     });
@@ -298,7 +299,7 @@ export async function pushSnapshotToSupabase(params: {
   snapshotJson: string;
 }): Promise<{ ok: boolean; data?: SupabaseSyncResponse; error?: string; code?: string }> {
   try {
-    const resp = await fetch('/api/supabase/sync', {
+    const resp = await fetch(apiUrl('/api/supabase/sync', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -359,9 +360,9 @@ export async function pullSnapshotFromSupabase(
   error?: string;
 }> {
   try {
-    const url = backupId
+    const url = apiUrl(backupId
       ? `/api/supabase/pull?backupId=${encodeURIComponent(backupId)}`
-      : '/api/supabase/pull';
+      : '/api/supabase/pull');
     const resp = await fetch(url, {
       method: 'GET',
       headers: {
