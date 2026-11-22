@@ -17,6 +17,7 @@ on:
       - 'src/components/InvoicesView.tsx'
       - 'src/components/TreasuryView.tsx'
       - 'src/components/BrandStudioView.tsx'
+      - 'src/components/BrandStudioView.tsx'
       - '.github/workflows/deploy-worker.yml'
   pull_request:
     branches: [main]
