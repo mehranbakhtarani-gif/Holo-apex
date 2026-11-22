@@ -1,0 +1,577 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated user corporate profile and fiscal settings (PII isolated to owner)",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "email": { "type": "string", "format": "email", "maxLength": 200 },
+        "companyName": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "economicCode": { "type": "string", "maxLength": 32 },
+        "nationalId": { "type": "string", "maxLength": 32 },
+        "fiscalYear": { "type": "string", "minLength": 4, "maxLength": 16 },
+        "currencyUnit": { "type": "string", "enum": ["IRR", "IRT"] },
+        "role": { "type": "string", "enum": ["accountant"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "displayName", "companyName", "fiscalYear", "currencyUnit", "role", "createdAt", "updatedAt"]
+    },
+    "WorkspaceCounter": {
+      "title": "WorkspaceCounter",
+      "description": "Atomic sequential counter for multi-device collision-free voucher and invoice numbering",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "lastVoucherNumber": { "type": "number" },
+        "lastInvoiceSeq": { "type": "number" },
+        "updatedByDevice": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "lastVoucherNumber", "createdAt", "updatedAt"]
+    },
+    "Account": {
+      "title": "Account",
+      "description": "Holoo Chart of Accounts node (Group, Kol, Moein, Tafsili)",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "code": { "type": "string", "minLength": 1, "maxLength": 24, "pattern": "^[0-9]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "level": { "type": "string", "enum": ["group", "kol", "moein", "tafsili"] },
+        "parentCode": { "type": "string", "maxLength": 24 },
+        "category": { "type": "string", "enum": ["asset", "liability", "equity", "revenue", "cogs", "expense", "memo"] },
+        "nature": { "type": "string", "enum": ["debit", "credit", "both"] },
+        "isSystem": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "code", "title", "level", "category", "nature", "isSystem", "createdAt", "updatedAt"]
+    },
+    "Party": {
+      "title": "Party",
+      "description": "Customer, vendor, bank, or intermediary counterparty with optimistic concurrency version",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "code": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "partyType": { "type": "string", "enum": ["customer", "vendor", "both", "intermediary"] },
+        "nationalId": { "type": "string", "maxLength": 32 },
+        "economicCode": { "type": "string", "maxLength": 32 },
+        "phone": { "type": "string", "maxLength": 32 },
+        "address": { "type": "string", "maxLength": 300 },
+        "creditLimit": { "type": "number" },
+        "openingBalance": { "type": "number" },
+        "accountCode": { "type": "string", "maxLength": 24 },
+        "commissionRate": { "type": "number" },
+        "pricingTier": { "type": "string", "enum": ["standard", "wholesale", "factory", "cash_vip"] },
+        "tierDiscountPct": { "type": "number" },
+        "_version": { "type": "number" },
+        "updatedByDevice": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "code", "name", "partyType", "creditLimit", "openingBalance", "accountCode", "createdAt", "updatedAt"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Multi-unit textile yarn inventory item with kg/carton/bobbin conversions, lot number, moving weighted-average buyPrice, and optimistic concurrency version",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "sku": { "type": "string", "minLength": 1, "maxLength": 48 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "category": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "warehouse": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "unit": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "secondaryUnit": { "type": "string", "maxLength": 32 },
+        "kgPerCarton": { "type": "number" },
+        "bobbinUnit": { "type": "string", "maxLength": 32 },
+        "bobbinsPerCarton": { "type": "number" },
+        "yarnCount": { "type": "string", "maxLength": 48 },
+        "lotNumber": { "type": "string", "maxLength": 48 },
+        "originCountry": { "type": "string", "maxLength": 64 },
+        "buyPrice": { "type": "number" },
+        "sellPrice": { "type": "number" },
+        "stock": { "type": "number" },
+        "reorderPoint": { "type": "number" },
+        "vatExempt": { "type": "boolean" },
+        "_version": { "type": "number" },
+        "updatedByDevice": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "sku", "name", "category", "warehouse", "unit", "buyPrice", "sellPrice", "stock", "reorderPoint", "vatExempt", "createdAt", "updatedAt"]
+    },
+    "Voucher": {
+      "title": "Voucher",
+      "description": "Balanced double-entry accounting journal voucher with optimistic version locking",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "voucherNumber": { "type": "number" },
+        "date": { "type": "string", "minLength": 8, "maxLength": 20 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "voucherType": { "type": "string", "enum": ["opening", "general", "sales", "purchase", "treasury", "payroll", "depreciation", "closing"] },
+        "status": { "type": "string", "enum": ["draft", "permanent"] },
+        "totalDebit": { "type": "number" },
+        "totalCredit": { "type": "number" },
+        "currencyCode": { "type": "string", "maxLength": 10 },
+        "exchangeRate": { "type": "number" },
+        "foreignTotalDebit": { "type": "number" },
+        "foreignTotalCredit": { "type": "number" },
+        "referenceId": { "type": "string", "maxLength": 128 },
+        "lines": { "type": "array", "description": "Bounded array of 2 to 100 double-entry lines" },
+        "_version": { "type": "number" },
+        "updatedByDevice": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "voucherNumber", "date", "description", "voucherType", "status", "totalDebit", "totalCredit", "lines", "createdAt", "updatedAt"]
+    },
+    "Invoice": {
+      "title": "Invoice",
+      "description": "Corporate sales, purchase, proforma, return, or waste invoice with COGS snapshots, VAT, and optional foreign currency",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "invoiceNumber": { "type": "string", "minLength": 1, "maxLength": 48 },
+        "taxSerial": { "type": "string", "maxLength": 64 },
+        "invoiceType": { "type": "string", "enum": ["sale", "purchase", "proforma", "sale_return", "purchase_return", "waste"] },
+        "date": { "type": "string", "minLength": 8, "maxLength": 20 },
+        "partyId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "partyName": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "intermediaryId": { "type": "string", "maxLength": 128 },
+        "intermediaryName": { "type": "string", "maxLength": 160 },
+        "warehouse": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "costCenterId": { "type": "string", "maxLength": 128 },
+        "currencyCode": { "type": "string", "maxLength": 10 },
+        "exchangeRate": { "type": "number" },
+        "foreignSubtotal": { "type": "number" },
+        "foreignDiscount": { "type": "number" },
+        "foreignVatAmount": { "type": "number" },
+        "foreignGrandTotal": { "type": "number" },
+        "subtotal": { "type": "number" },
+        "discount": { "type": "number" },
+        "vatAmount": { "type": "number" },
+        "grandTotal": { "type": "number" },
+        "paidCash": { "type": "number" },
+        "paidBank": { "type": "number" },
+        "paidCheque": { "type": "number" },
+        "creditAmount": { "type": "number" },
+        "status": { "type": "string", "enum": ["issued", "settled", "cancelled"] },
+        "voucherId": { "type": "string", "maxLength": 128 },
+        "items": { "type": "array", "description": "Bounded array of 1 to 100 invoice items" },
+        "_version": { "type": "number" },
+        "updatedByDevice": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "invoiceNumber", "invoiceType", "date", "partyId", "partyName", "warehouse", "subtotal", "discount", "vatAmount", "grandTotal", "paidCash", "paidBank", "paidCheque", "creditAmount", "status", "items", "createdAt", "updatedAt"]
+    },
+    "Cheque": {
+      "title": "Cheque",
+      "description": "Sayadi receivable or payable cheque with full lifecycle tracking",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "sayadiId": { "type": "string", "minLength": 6, "maxLength": 32 },
+        "serial": { "type": "string", "minLength": 1, "maxLength": 48 },
+        "direction": { "type": "string", "enum": ["receivable", "payable"] },
+        "partyId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "partyName": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "bankName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "branch": { "type": "string", "maxLength": 100 },
+        "amount": { "type": "number" },
+        "issueDate": { "type": "string", "minLength": 8, "maxLength": 20 },
+        "dueDate": { "type": "string", "minLength": 8, "maxLength": 20 },
+        "status": { "type": "string", "enum": ["in_box", "deposited", "endorsed", "cleared", "bounced", "cancelled"] },
+        "notes": { "type": "string", "maxLength": 300 },
+        "_version": { "type": "number" },
+        "updatedByDevice": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "sayadiId", "serial", "direction", "partyId", "partyName", "bankName", "amount", "issueDate", "dueDate", "status", "createdAt", "updatedAt"]
+    },
+    "Employee": {
+      "title": "Employee",
+      "description": "Corporate employee record for payroll, social security, and tax calculations",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "personnelCode": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "fullName": { "type": "string", "minLength": 1, "maxLength": 140 },
+        "department": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "baseSalary": { "type": "number" },
+        "housingAllowance": { "type": "number" },
+        "foodAllowance": { "type": "number" },
+        "childrenCount": { "type": "number" },
+        "overtimeHours": { "type": "number" },
+        "costCenterId": { "type": "string", "maxLength": 128 },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "personnelCode", "fullName", "department", "baseSalary", "housingAllowance", "foodAllowance", "childrenCount", "overtimeHours", "active", "createdAt", "updatedAt"]
+    },
+    "FixedAsset": {
+      "title": "FixedAsset",
+      "description": "Corporate fixed asset registry for straight-line depreciation",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "assetCode": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "purchaseDate": { "type": "string", "minLength": 8, "maxLength": 20 },
+        "purchaseCost": { "type": "number" },
+        "salvageValue": { "type": "number" },
+        "usefulLifeYears": { "type": "number" },
+        "accumulatedDepreciation": { "type": "number" },
+        "costCenterId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "assetCode", "title", "purchaseDate", "purchaseCost", "salvageValue", "usefulLifeYears", "accumulatedDepreciation", "createdAt", "updatedAt"]
+    },
+    "CostCenter": {
+      "title": "CostCenter",
+      "description": "Department or project cost center for profitability tracking",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "code": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 140 },
+        "budget": { "type": "number" },
+        "manager": { "type": "string", "maxLength": 120 },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "code", "name", "budget", "active", "createdAt", "updatedAt"]
+    },
+    "Currency": {
+      "title": "Currency",
+      "description": "Base and foreign currency definition for multi-currency invoicing and vouchers",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "code": { "type": "string", "minLength": 2, "maxLength": 10, "pattern": "^[A-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "symbol": { "type": "string", "minLength": 1, "maxLength": 16 },
+        "isBase": { "type": "boolean" },
+        "decimalPlaces": { "type": "number" },
+        "defaultRateToIrr": { "type": "number" },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "code", "name", "symbol", "isBase", "decimalPlaces", "defaultRateToIrr", "active", "createdAt", "updatedAt"]
+    },
+    "ExchangeRate": {
+      "title": "ExchangeRate",
+      "description": "Daily Shamsi exchange rate entry against IRR base currency",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "currencyCode": { "type": "string", "minLength": 2, "maxLength": 10, "pattern": "^[A-Z0-9_\\-]+$" },
+        "date": { "type": "string", "minLength": 8, "maxLength": 20 },
+        "rateToIrr": { "type": "number" },
+        "rateType": { "type": "string", "enum": ["market", "exchange_center", "nima", "agreed"] },
+        "notes": { "type": "string", "maxLength": 200 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "currencyCode", "date", "rateToIrr", "rateType", "createdAt", "updatedAt"]
+    },
+    "ImportDossier": {
+      "title": "ImportDossier",
+      "description": "Yarn import customs dossier with landed cost allocation and recoverable VAT separation",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "dossierNumber": { "type": "string", "minLength": 1, "maxLength": 48 },
+        "proformaNumber": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "cotageNumber": { "type": "string", "maxLength": 64 },
+        "supplierId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "supplierName": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "originCountry": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "warehouse": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "date": { "type": "string", "minLength": 8, "maxLength": 20 },
+        "currencyCode": { "type": "string", "minLength": 2, "maxLength": 10 },
+        "exchangeRate": { "type": "number" },
+        "allocationMethod": { "type": "string", "enum": ["weight", "value"] },
+        "status": { "type": "string", "enum": ["draft", "in_transit", "customs", "cleared"] },
+        "items": { "type": "array", "description": "Bounded array of 1 to 100 imported yarn lines" },
+        "costs": { "type": "array", "description": "Bounded array of 0 to 100 landed cost / VAT lines" },
+        "totalForeignAmount": { "type": "number" },
+        "totalFobIrr": { "type": "number" },
+        "totalLandedCostsIrr": { "type": "number" },
+        "totalRecoverableVatIrr": { "type": "number" },
+        "grandTotalLandedIrr": { "type": "number" },
+        "voucherId": { "type": "string", "maxLength": 128 },
+        "_version": { "type": "number" },
+        "updatedByDevice": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "dossierNumber", "proformaNumber", "supplierId", "supplierName", "originCountry", "warehouse", "date", "currencyCode", "exchangeRate", "allocationMethod", "status", "items", "costs", "totalForeignAmount", "totalFobIrr", "totalLandedCostsIrr", "grandTotalLandedIrr", "createdAt", "updatedAt"]
+    },
+    "SalesOrder": {
+      "title": "SalesOrder",
+      "description": "Customer yarn sales order and weighbridge warehouse dispatch record",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "orderNumber": { "type": "string", "minLength": 1, "maxLength": 48 },
+        "dispatchNumber": { "type": "string", "maxLength": 48 },
+        "date": { "type": "string", "minLength": 8, "maxLength": 20 },
+        "dispatchDate": { "type": "string", "maxLength": 20 },
+        "partyId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "partyName": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "warehouse": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "driverName": { "type": "string", "maxLength": 120 },
+        "plateNumber": { "type": "string", "maxLength": 48 },
+        "status": { "type": "string", "enum": ["pending", "dispatched", "invoiced", "cancelled"] },
+        "items": { "type": "array", "description": "Bounded array of 1 to 100 order/dispatch items" },
+        "invoiceId": { "type": "string", "maxLength": 128 },
+        "notes": { "type": "string", "maxLength": 300 },
+        "_version": { "type": "number" },
+        "updatedByDevice": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "orderNumber", "date", "partyId", "partyName", "warehouse", "status", "items", "createdAt", "updatedAt"]
+    },
+    "SubcontractJob": {
+      "title": "SubcontractJob",
+      "description": "Dyeing, twisting, or weaving subcontract job with IAS 2 normal/abnormal loss separation",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "jobNumber": { "type": "string", "minLength": 1, "maxLength": 48 },
+        "date": { "type": "string", "minLength": 8, "maxLength": 20 },
+        "completionDate": { "type": "string", "maxLength": 20 },
+        "contractorPartyId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "contractorName": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "processType": { "type": "string", "enum": ["dyeing", "twisting", "weaving"] },
+        "rawProductId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "rawProductName": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "sentWeightKg": { "type": "number" },
+        "rawUnitCostIrr": { "type": "number" },
+        "expectedLossPct": { "type": "number" },
+        "returnedWeightKg": { "type": "number" },
+        "abnormalLossKg": { "type": "number" },
+        "abnormalLossCostIrr": { "type": "number" },
+        "serviceVatIrr": { "type": "number" },
+        "finishedProductId": { "type": "string", "maxLength": 128 },
+        "finishedProductName": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "finishedLotNumber": { "type": "string", "maxLength": 48 },
+        "serviceFeePerKgIrr": { "type": "number" },
+        "totalServiceFeeIrr": { "type": "number" },
+        "finishedUnitCostIrr": { "type": "number" },
+        "status": { "type": "string", "enum": ["sent", "completed"] },
+        "dispatchVoucherId": { "type": "string", "maxLength": 128 },
+        "voucherId": { "type": "string", "maxLength": 128 },
+        "notes": { "type": "string", "maxLength": 300 },
+        "_version": { "type": "number" },
+        "updatedByDevice": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "jobNumber", "date", "contractorPartyId", "contractorName", "processType", "rawProductId", "rawProductName", "sentWeightKg", "rawUnitCostIrr", "expectedLossPct", "returnedWeightKg", "finishedProductName", "serviceFeePerKgIrr", "totalServiceFeeIrr", "finishedUnitCostIrr", "status", "createdAt", "updatedAt"]
+    },
+    "RbacOperator": {
+      "title": "RbacOperator",
+      "description": "Internal workspace operator profile and module permissions",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "fullName": { "type": "string", "minLength": 1, "maxLength": 140 },
+        "role": { "type": "string", "enum": ["finance_manager", "accountant", "warehouse_keeper", "sales_officer", "auditor"] },
+        "email": { "type": "string", "maxLength": 200 },
+        "active": { "type": "boolean" },
+        "permissions": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "fullName", "role", "active", "permissions", "createdAt", "updatedAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Immutable chronological audit trail of accounting, inventory, and multi-device actions",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "timestamp": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "operatorName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "operatorRole": { "type": "string", "enum": ["finance_manager", "accountant", "warehouse_keeper", "sales_officer", "auditor"] },
+        "module": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "action": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "details": { "type": "string", "minLength": 1, "maxLength": 400 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "timestamp", "operatorName", "operatorRole", "module", "action", "details", "createdAt", "updatedAt"]
+    },
+    "WorkspaceExtensions": {
+      "title": "WorkspaceExtensions",
+      "description": "Cloud-synced Holoo Apex 9.6 workspace state across 3 devices (reserved invoices, barcodes, 4-tier pricing, favorites, petty cash, recurring vouchers, bank loans, dye-lots, warehouse slips, BOM formulas, installments, volume discounts, Moadian tax links, fiscal archives)",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "reservedInvoices": { "type": "array" },
+        "productMetaMap": { "type": "object" },
+        "favoriteMenus": { "type": "array" },
+        "pettyCashCeilingIrr": { "type": "number" },
+        "pettyCashItems": { "type": "array" },
+        "recurringTemplates": { "type": "array" },
+        "bankLoans": { "type": "array" },
+        "dyeLots": { "type": "array" },
+        "warehouseSlips": { "type": "array" },
+        "bomFormulas": { "type": "array" },
+        "installmentPlans": { "type": "array" },
+        "volumeDiscountRules": { "type": "array" },
+        "moadianLinks": { "type": "object" },
+        "fiscalArchives": { "type": "array" },
+        "_version": { "type": "number" },
+        "updatedByDevice": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "createdAt", "updatedAt"]
+    },
+    "DevicePresence": {
+      "title": "DevicePresence",
+      "description": "Real-time online device heartbeat and concurrent record editing lock for multi-device collaboration",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "deviceId": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "deviceLabel": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "operatorName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "activeModule": { "type": "string", "minLength": 1, "maxLength": 48 },
+        "editingRecordKey": { "type": "string", "maxLength": 128 },
+        "editingRecordLabel": { "type": "string", "maxLength": 180 },
+        "lastSeenMs": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "deviceId", "deviceLabel", "operatorName", "activeModule", "lastSeenMs", "createdAt", "updatedAt"]
+    },
+    "CloudBackup": {
+      "title": "CloudBackup",
+      "description": "Rolling cloud backup snapshot in Firestore (automatically pruned to retain only the latest 3 versions per user)",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "revision": { "type": "number" },
+        "reason": { "type": "string", "enum": ["auto_sync", "manual_push"] },
+        "deviceId": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "deviceLabel": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "companyName": { "type": "string", "maxLength": 160 },
+        "fiscalYear": { "type": "string", "minLength": 4, "maxLength": 16 },
+        "savedAtMs": { "type": "number" },
+        "savedAtShamsi": { "type": "string", "minLength": 1, "maxLength": 48 },
+        "voucherCount": { "type": "number" },
+        "invoiceCount": { "type": "number" },
+        "productCount": { "type": "number" },
+        "sizeKb": { "type": "number" },
+        "snapshot": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "revision", "reason", "deviceId", "deviceLabel", "fiscalYear", "savedAtMs", "savedAtShamsi", "voucherCount", "invoiceCount", "productCount", "sizeKb", "snapshot", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private owner profile and company configuration (PII isolated)"
+    },
+    "/counters/{userId}": {
+      "schema": { "$ref": "#/entities/WorkspaceCounter" },
+      "description": "Atomic sequential voucher/invoice counters for multi-device sync"
+    },
+    "/workspaceExtensions/{userId}": {
+      "schema": { "$ref": "#/entities/WorkspaceExtensions" },
+      "description": "Cloud-synced Holoo Apex 9.6 operational extensions (reserved invoices, barcodes, petty cash, loans, dye-lots, slips, BOM, installments, volume discounts, fiscal archives)"
+    },
+    "/devicePresence/{presenceId}": {
+      "schema": { "$ref": "#/entities/DevicePresence" },
+      "description": "Real-time online devices and live concurrent edit lock warnings across 3 devices"
+    },
+    "/accounts/{accountId}": {
+      "schema": { "$ref": "#/entities/Account" },
+      "description": "Chart of Accounts entries owned by the authenticated company account"
+    },
+    "/parties/{partyId}": {
+      "schema": { "$ref": "#/entities/Party" },
+      "description": "Customers, vendors, and intermediaries"
+    },
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Inventory catalog items and warehouse balances"
+    },
+    "/vouchers/{voucherId}": {
+      "schema": { "$ref": "#/entities/Voucher" },
+      "description": "Balanced double-entry accounting journal vouchers"
+    },
+    "/invoices/{invoiceId}": {
+      "schema": { "$ref": "#/entities/Invoice" },
+      "description": "Sales, purchase, proforma, and return invoices"
+    },
+    "/cheques/{chequeId}": {
+      "schema": { "$ref": "#/entities/Cheque" },
+      "description": "Sayadi receivable and payable cheques"
+    },
+    "/employees/{employeeId}": {
+      "schema": { "$ref": "#/entities/Employee" },
+      "description": "Payroll employees"
+    },
+    "/assets/{assetId}": {
+      "schema": { "$ref": "#/entities/FixedAsset" },
+      "description": "Fixed assets registry"
+    },
+    "/costCenters/{costCenterId}": {
+      "schema": { "$ref": "#/entities/CostCenter" },
+      "description": "Corporate cost centers and projects"
+    },
+    "/currencies/{currencyId}": {
+      "schema": { "$ref": "#/entities/Currency" },
+      "description": "Base and foreign currency definitions"
+    },
+    "/exchangeRates/{rateId}": {
+      "schema": { "$ref": "#/entities/ExchangeRate" },
+      "description": "Daily Shamsi exchange rates against IRR"
+    },
+    "/importDossiers/{dossierId}": {
+      "schema": { "$ref": "#/entities/ImportDossier" },
+      "description": "Yarn import customs dossiers and landed cost allocations"
+    },
+    "/salesOrders/{orderId}": {
+      "schema": { "$ref": "#/entities/SalesOrder" },
+      "description": "Customer sales orders and weighbridge dispatch records"
+    },
+    "/subcontractJobs/{jobId}": {
+      "schema": { "$ref": "#/entities/SubcontractJob" },
+      "description": "Dyeing/twisting/weaving subcontracting orders"
+    },
+    "/rbacOperators/{operatorId}": {
+      "schema": { "$ref": "#/entities/RbacOperator" },
+      "description": "Workspace operators and module permissions"
+    },
+    "/auditLogs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "Immutable activity audit trail"
+    },
+    "/cloudBackups/{backupId}": {
+      "schema": { "$ref": "#/entities/CloudBackup" },
+      "description": "Rolling Firestore cloud backups automatically pruned to keep only the latest 3 versions per user"
+    }
+  }
+}
