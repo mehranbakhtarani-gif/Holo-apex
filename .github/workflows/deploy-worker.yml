@@ -109,5 +109,12 @@ jobs:
             echo "::error::Add CLOUDFLARE_API_TOKEN as a GitHub secret and CLOUDFLARE_ACCOUNT_ID as a GitHub Actions variable."
             exit 1
           fi
-      - name: Deploy Worker
-        run: bunx wrangler deploy
+      - name: Deploy isolated preview Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            bunx wrangler deploy --name holo-apex-api-preview
+          else
+            bunx wrangler deploy
+          fi
