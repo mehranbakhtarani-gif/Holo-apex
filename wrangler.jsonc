@@ -2,7 +2,7 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "holo-apex-api",
   "main": "worker.ts",
-  "compatibility_date": "2026-11-23",
+  "compatibility_date": "2026-11-22",
   "compatibility_flags": ["nodejs_compat", "nodejs_compat_populate_process_env"],
   "workers_dev": true,
   "vars": {
