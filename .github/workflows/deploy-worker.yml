@@ -71,6 +71,19 @@ jobs:
             -H 'Content-Type: application/json' --data-binary '{"snapshotJson":"{}"}')
           test "$CONFIG_STATUS" = "503"
           grep -q 'NOT_CONFIGURED' /tmp/holo-valid-json.json
+          COPILOT_INVALID_STATUS=$(curl --silent --output /tmp/holo-copilot-invalid.json --write-out '%{http_code}' \
+            -X POST http://127.0.0.1:8787/api/ai/copilot \
+            -H 'Content-Type: application/json' --data-binary '{"message":"x"}')
+          test "$COPILOT_INVALID_STATUS" = "400"
+          COPILOT_VALID_STATUS=$(curl --silent --output /tmp/holo-copilot-valid.json --write-out '%{http_code}' \
+            -X POST http://127.0.0.1:8787/api/ai/copilot \
+            -H 'Content-Type: application/json' --data-binary '{"message":"سلام"}')
+          test "$COPILOT_VALID_STATUS" = "503"
+          grep -q 'GEMINI_API_KEY' /tmp/holo-copilot-valid.json
+          SUPABASE_STATUS=$(curl --silent --output /tmp/holo-supabase-status.json --write-out '%{http_code}' \
+            http://127.0.0.1:8787/api/supabase/status)
+          test "$SUPABASE_STATUS" = "200"
+          grep -q 'NOT_CONFIGURED' /tmp/holo-supabase-status.json
 
   deploy:
     if: ${{ github.event_name != 'pull_request' && (github.event_name == 'workflow_dispatch' || vars.CLOUDFLARE_ACCOUNT_ID != '') }}
