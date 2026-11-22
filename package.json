@@ -4,13 +4,16 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx server.ts",
-    "start": "node server.ts",
+    "dev": "tsx server.node.ts",
+    "start": "tsx server.node.ts",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "lint:rules": "eslint firestore.rules"
+    "lint:rules": "eslint firestore.rules",
+    "worker:dev": "npx wrangler dev",
+    "worker:dry-run": "npx wrangler deploy --dry-run",
+    "worker:deploy": "npx wrangler deploy"
   },
   "dependencies": {
     "@firebase/eslint-plugin-security-rules": "^0.0.2",
