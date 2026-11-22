@@ -1493,7 +1493,8 @@ ${compactAccounts}`;
           headers: buildSupabaseHeaders(cfg, {
             Prefer: 'resolution=merge-duplicates,return=minimal',
           }),
-          body: JSON.stringify(upsertPayload),          signal: AbortSignal.timeout(10000),
+          body: JSON.stringify(upsertPayload),
+          signal: AbortSignal.timeout(10000),
         });
         if (!upsertResp.ok) {
           res.status(upsertResp.status).json({ error: 'خطا در ذخیره نسخه روی Supabase.' });
