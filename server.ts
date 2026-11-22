@@ -98,7 +98,68 @@ export async function createApp() {
   const ALLOWED_IMAGE_MIMES = new Set(['image/png', 'image/jpeg', 'image/webp']);
   const MAX_BASE64_IMAGE_CHARS = 7_500_000;
 
-  app.use(express.json({ limit: '10mb' }));
+  // Worker-safe JSON parser: avoid express.json/body-parser/raw-body/iconv-lite,
+  // whose Node stream dependency is incompatible with the Cloudflare Workers runtime.
+  app.use((req: Request, res: Response, next: express.NextFunction) => {
+    const contentType = String(req.headers['content-type'] || '').toLowerCase();
+    if (!contentType.includes('application/json')) {
+      req.body = {};
+      next();
+      return;
+    }
+
+    const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
+    let settled = false;
+    const maxBytes = 10 * 1024 * 1024;
+
+    req.on('data', (chunk: Uint8Array | string) => {
+      if (settled) return;
+      const bytes = typeof chunk === 'string' ? new TextEncoder().encode(chunk) : chunk;
+      totalBytes += bytes.byteLength;
+      if (totalBytes > maxBytes) {
+        settled = true;
+        res.status(413).json({ error: 'حجم درخواست بیش از حد مجاز است.' });
+        req.resume();
+        return;
+      }
+      chunks.push(bytes);
+    });
+
+    req.on('end', () => {
+      if (settled) return;
+      settled = true;
+      const bodyBytes = new Uint8Array(totalBytes);
+      let offset = 0;
+      for (const chunk of chunks) {
+        bodyBytes.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+      const rawBody = new TextDecoder().decode(bodyBytes);
+      if (!rawBody.trim()) {
+        req.body = {};
+        next();
+        return;
+      }
+      try {
+        const parsed: unknown = JSON.parse(rawBody);
+        if (parsed === null || typeof parsed !== 'object') {
+          res.status(400).json({ error: 'بدنه JSON درخواست نامعتبر است.' });
+          return;
+        }
+        req.body = parsed;
+        next();
+      } catch {
+        res.status(400).json({ error: 'فرمت JSON درخواست نامعتبر است.' });
+      }
+    });
+
+    req.on('error', () => {
+      if (settled) return;
+      settled = true;
+      res.status(400).json({ error: 'خواندن بدنه درخواست ناموفق بود.' });
+    });
+  });
   app.use('/api/ai', createRateLimiter(30));
   app.use('/api/images', createRateLimiter(15));
   app.use('/api/supabase', createRateLimiter(60));
