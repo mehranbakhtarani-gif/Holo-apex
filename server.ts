@@ -1,15 +1,6 @@
-import 'dotenv/config';
-import fs from 'fs';
-import http from 'http';
 import express, { Request, Response } from 'express';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { GoogleGenAI, ThinkingLevel, Type } from '@google/genai';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const PORT = Number(process.env.PORT) || 3000;
 const ALLOWED_SIZES = new Set(['1K', '2K', '4K']);
 const ALLOWED_ASPECT_RATIOS = new Set([
   '1:1',
@@ -42,10 +33,33 @@ function createGeminiClient() {
   });
 }
 
-async function startServer() {
+export async function createApp() {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
+
+  // CORS is restricted to the published frontend origin; no wildcard credentials.
+  const allowedOrigins = new Set(
+    (process.env.CORS_ALLOWED_ORIGINS || 'https://mehranbakhtarani-gif.github.io')
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean)
+  );
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin && allowedOrigins.has(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Vary', 'Origin');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+      res.setHeader('Access-Control-Max-Age', '86400');
+    }
+    if (req.method === 'OPTIONS') {
+      res.status(204).end();
+      return;
+    }
+    next();
+  });
 
   // Baseline security headers (preserve iframe embed compatibility by omitting X-Frame-Options)
   app.use((_req, res, next) => {
@@ -297,7 +311,6 @@ async function startServer() {
         res.json({ ...fresh, cached: false });
         return;
       }
-
       if (liveFxCache && liveFxCache.items.length > 0) {
         res.json({ ...liveFxCache, cached: true, stale: true });
         return;
@@ -597,8 +610,7 @@ ${compactParties}
 ${compactProducts}
 
 لیست طرف‌حساب‌ها (id | code: name):
-${compactParties}
-${hasText ? `\nمتن سفارش/فاکتور:\n"""${text.trim()}"""` : ''}`;
+${compactParties}${hasText ? `\nمتن سفارش/فاکتور:\n"""${text.trim()}"""` : ''}`;
 
       const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
         { text: instruction },
@@ -856,16 +868,8 @@ ${compactAccounts}`;
   // ---------------- DUAL-CLOUD SUPABASE POSTGRESQL SYNC PROXY ----------------
   // Keeps SUPABASE_SERVICE_ROLE_KEY strictly on the server and verifies Firebase ID Tokens
   // on every protected sync/pull request before accessing owner-scoped PostgreSQL rows.
-  let firebaseWebApiKey = '';
-  try {
-    const fbCfgPath = path.resolve(__dirname, 'firebase-applet-config.json');
-    if (fs.existsSync(fbCfgPath)) {
-      const parsedCfg = JSON.parse(fs.readFileSync(fbCfgPath, 'utf-8')) as { apiKey?: string };
-      firebaseWebApiKey = String(parsedCfg.apiKey || '').trim();
-    }
-  } catch {
-    firebaseWebApiKey = '';
-  }
+  // Supplied as a non-secret Worker variable; Node development loads it in server.node.ts.
+  const firebaseWebApiKey = String(process.env.FIREBASE_WEB_API_KEY || '').trim();
 
   function isPrivateOrBlockedHost(hostname: string): boolean {
     const h = hostname.toLowerCase().replace(/^\[|\]$/g, '');
@@ -898,7 +902,6 @@ ${compactAccounts}`;
     const rawUrl = String(process.env.SUPABASE_URL || '').trim();
     const serviceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
     if (!rawUrl || !serviceRoleKey) return null;
-
     try {
       const parsed = new URL(rawUrl);
       if (parsed.protocol !== 'https:') return null;
@@ -1197,8 +1200,7 @@ ${compactAccounts}`;
       const delResp = await fetch(delUrl, {
         method: 'DELETE',
         headers: buildSupabaseHeaders(cfg, { Prefer: 'return=minimal' }),
-        signal: AbortSignal.timeout(7000),
-      });
+        signal: AbortSignal.timeout(7000),      });
       if (!delResp.ok) {
         res.status(delResp.status).json({ error: 'خطا در حذف نسخه پشتیبان از Supabase.' });
         return;
@@ -1498,7 +1500,6 @@ ${compactAccounts}`;
           body: JSON.stringify(upsertPayload),
           signal: AbortSignal.timeout(10000),
         });
-
         if (!upsertResp.ok) {
           res.status(upsertResp.status).json({ error: 'خطا در ذخیره نسخه روی Supabase.' });
           return;
@@ -1549,9 +1550,7 @@ ${compactAccounts}`;
     }
   });
 
-  const httpServer = http.createServer(app);
-
-  if (process.env.NODE_ENV !== 'production') {
+  // Frontend serving is intentionally handled by server.node.ts, not the Worker bundle.
     // Prevent Vite 8's @vite/client from opening a failing WebSocket to port 24678
     // behind Cloud Run's single-port proxy while keeping CSS injection & HMR stubs working.
     app.get('/@vite/client', (_req: Request, res: Response) => {
@@ -1608,17 +1607,7 @@ export class ErrorOverlay extends HTMLElement {}
       appType: 'spa',
     });
     app.use(vite.middlewares);
-  } else {
-    const distPath = path.resolve(__dirname, 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (_req: Request, res: Response) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
   }
 
-  httpServer.listen(PORT, '0.0.0.0', () => {
-    console.log(`Holoo Corporate Apex ERP running on http://0.0.0.0:${PORT}`);
-  });
+  return app;
 }
-
-startServer();
