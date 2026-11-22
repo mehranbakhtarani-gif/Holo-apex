@@ -1,3 +1,4 @@
+import { apiUrl } from '../lib/apiBase';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ArrowDownRight, ArrowUpRight, CheckCircle2, ExternalLink, RefreshCw } from 'lucide-react';
 import { useAccounting } from '../context/AccountingContext';
@@ -43,7 +44,7 @@ export const LiveFxTickerCard: React.FC<{
       if (force) setRefreshing(true);
       else setLoading(true);
       setError(null);
-      const res = await fetch(force ? '/api/live-fx?refresh=1' : '/api/live-fx');
+      const res = await fetch(apiUrl(force ? '/api/live-fx?refresh=1' : '/api/live-fx'));
       if (!res.ok) throw new Error('دریافت نرخ زنده ناموفق بود.');
       const json = (await res.json()) as LiveFxResponse;
       if (Array.isArray(json.items) && json.items.length > 0) {
