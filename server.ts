@@ -38,7 +38,7 @@ export async function createApp() {
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
 
-  // CORS is restricted to the published frontend origin; no wildcard credentials.
+  // Restrict browser access to the published frontend origin.
   const allowedOrigins = new Set(
     (process.env.CORS_ALLOWED_ORIGINS || 'https://mehranbakhtarani-gif.github.io')
       .split(',')
@@ -297,7 +297,8 @@ export async function createApp() {
         liveFxCache &&
         liveFxCache.items.length > 0 &&
         Date.now() - liveFxCache.fetchedAt < FX_CACHE_TTL_MS
-      ) {        res.json({
+      ) {
+        res.json({
           ...liveFxCache,
           cached: true,
         });
@@ -310,6 +311,7 @@ export async function createApp() {
         res.json({ ...fresh, cached: false });
         return;
       }
+
       if (liveFxCache && liveFxCache.items.length > 0) {
         res.json({ ...liveFxCache, cached: true, stale: true });
         return;
@@ -597,6 +599,7 @@ ${compactParties}
       const compactParties = Array.isArray(parties)
         ? parties.slice(0, 80).map((p: { id?: string; code?: string; name?: string }) => `${p.id} | ${p.code}: ${p.name}`).join('\n')
         : '';
+
       const instruction = `تو دستیار هوشمند صدور فاکتور هلو اپکس ۹.۶ هستی. از متن یا تصویر فاکتور/سفارش ارسالی، اقلام کالا، طرف‌حساب، وزن/کارتن و نرخ هر کیلوگرم را استخراج کن.
 قوانین:
 1. قیمت‌های خروجی (unitPriceIrr و discountIrr) باید به **ریال** باشند (اگر تومان بود در ۱۰ ضرب کن).
@@ -608,7 +611,8 @@ ${compactParties}
 ${compactProducts}
 
 لیست طرف‌حساب‌ها (id | code: name):
-${compactParties}${hasText ? `\nمتن سفارش/فاکتور:\n"""${text.trim()}"""` : ''}`;
+${compactParties}
+${hasText ? `\nمتن سفارش/فاکتور:\n"""${text.trim()}"""` : ''}`;
 
       const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
         { text: instruction },
@@ -866,7 +870,7 @@ ${compactAccounts}`;
   // ---------------- DUAL-CLOUD SUPABASE POSTGRESQL SYNC PROXY ----------------
   // Keeps SUPABASE_SERVICE_ROLE_KEY strictly on the server and verifies Firebase ID Tokens
   // on every protected sync/pull request before accessing owner-scoped PostgreSQL rows.
-  // Supplied as a non-secret Worker variable; Node development loads it in server.node.ts.
+  // Firebase Web API key is public configuration, injected as a Worker variable.
   const firebaseWebApiKey = String(process.env.FIREBASE_WEB_API_KEY || '').trim();
 
   function isPrivateOrBlockedHost(hostname: string): boolean {
@@ -895,10 +899,12 @@ ${compactAccounts}`;
     auditTableName: string;
     projectRef: string;
   }
+
   function getValidatedSupabaseConfig(): ValidatedSupabaseConfig | null {
     const rawUrl = String(process.env.SUPABASE_URL || '').trim();
     const serviceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
     if (!rawUrl || !serviceRoleKey) return null;
+
     try {
       const parsed = new URL(rawUrl);
       if (parsed.protocol !== 'https:') return null;
@@ -1194,9 +1200,11 @@ ${compactAccounts}`;
 
     try {
       const delUrl = `${cfg.baseUrl}/rest/v1/${encodeURIComponent(cfg.tableName)}?owner_id=eq.${encodeURIComponent(backupId)}`;
-      const delResp = await fetch(delUrl, {        method: 'DELETE',
+      const delResp = await fetch(delUrl, {
+        method: 'DELETE',
         headers: buildSupabaseHeaders(cfg, { Prefer: 'return=minimal' }),
-        signal: AbortSignal.timeout(7000),      });
+        signal: AbortSignal.timeout(7000),
+      });
       if (!delResp.ok) {
         res.status(delResp.status).json({ error: 'خطا در حذف نسخه پشتیبان از Supabase.' });
         return;
@@ -1496,6 +1504,7 @@ ${compactAccounts}`;
           body: JSON.stringify(upsertPayload),
           signal: AbortSignal.timeout(10000),
         });
+
         if (!upsertResp.ok) {
           res.status(upsertResp.status).json({ error: 'خطا در ذخیره نسخه روی Supabase.' });
           return;
