@@ -16,7 +16,10 @@ on:
       - 'src/components/VouchersView.tsx'
       - 'src/components/InvoicesView.tsx'
       - 'src/components/TreasuryView.tsx'
+      - 'src/components/BrandStudioView.tsx'
       - '.github/workflows/deploy-worker.yml'
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -40,7 +43,7 @@ jobs:
         run: bunx wrangler deploy --dry-run
 
   deploy:
-    if: ${{ github.event_name == 'workflow_dispatch' || vars.CLOUDFLARE_ACCOUNT_ID != '' }}
+    if: ${{ github.event_name != 'pull_request' && (github.event_name == 'workflow_dispatch' || vars.CLOUDFLARE_ACCOUNT_ID != '') }}
     needs: validate
     runs-on: ubuntu-latest
     env:
