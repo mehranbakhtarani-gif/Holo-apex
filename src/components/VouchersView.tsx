@@ -1,3 +1,4 @@
+import { apiUrl } from '../lib/apiBase';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
@@ -464,7 +465,7 @@ export const VouchersView: React.FC<{ initialIntent?: string; clearIntent?: () =
     setAiLoading(true);
     setAiReasoning('');
     try {
-      const resp = await fetch('/api/ai/parse-voucher', {
+      const resp = await fetch(apiUrl('/api/ai/parse-voucher'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

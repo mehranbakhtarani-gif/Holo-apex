@@ -1,15 +1,6 @@
-import 'dotenv/config';
-import fs from 'fs';
-import http from 'http';
 import express, { Request, Response } from 'express';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { GoogleGenAI, ThinkingLevel, Type } from '@google/genai';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const PORT = Number(process.env.PORT) || 3000;
 const ALLOWED_SIZES = new Set(['1K', '2K', '4K']);
 const ALLOWED_ASPECT_RATIOS = new Set([
   '1:1',
@@ -42,10 +33,33 @@ function createGeminiClient() {
   });
 }
 
-async function startServer() {
+export async function createApp() {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
+
+  // Restrict browser access to the published frontend origin.
+  const allowedOrigins = new Set(
+    (process.env.CORS_ALLOWED_ORIGINS || 'https://mehranbakhtarani-gif.github.io')
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean)
+  );
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin && allowedOrigins.has(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Vary', 'Origin');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+      res.setHeader('Access-Control-Max-Age', '86400');
+    }
+    if (req.method === 'OPTIONS') {
+      res.status(204).end();
+      return;
+    }
+    next();
+  });
 
   // Baseline security headers (preserve iframe embed compatibility by omitting X-Frame-Options)
   app.use((_req, res, next) => {
@@ -856,16 +870,8 @@ ${compactAccounts}`;
   // ---------------- DUAL-CLOUD SUPABASE POSTGRESQL SYNC PROXY ----------------
   // Keeps SUPABASE_SERVICE_ROLE_KEY strictly on the server and verifies Firebase ID Tokens
   // on every protected sync/pull request before accessing owner-scoped PostgreSQL rows.
-  let firebaseWebApiKey = '';
-  try {
-    const fbCfgPath = path.resolve(__dirname, 'firebase-applet-config.json');
-    if (fs.existsSync(fbCfgPath)) {
-      const parsedCfg = JSON.parse(fs.readFileSync(fbCfgPath, 'utf-8')) as { apiKey?: string };
-      firebaseWebApiKey = String(parsedCfg.apiKey || '').trim();
-    }
-  } catch {
-    firebaseWebApiKey = '';
-  }
+  // Firebase Web API key is public configuration, injected as a Worker variable.
+  const firebaseWebApiKey = String(process.env.FIREBASE_WEB_API_KEY || '').trim();
 
   function isPrivateOrBlockedHost(hostname: string): boolean {
     const h = hostname.toLowerCase().replace(/^\[|\]$/g, '');
@@ -1549,76 +1555,5 @@ ${compactAccounts}`;
     }
   });
 
-  const httpServer = http.createServer(app);
-
-  if (process.env.NODE_ENV !== 'production') {
-    // Prevent Vite 8's @vite/client from opening a failing WebSocket to port 24678
-    // behind Cloud Run's single-port proxy while keeping CSS injection & HMR stubs working.
-    app.get('/@vite/client', (_req: Request, res: Response) => {
-      res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-      res.send(`
-const sheetsMap = new Map();
-export function updateStyle(id, content) {
-  let style = sheetsMap.get(id);
-  if (!style) {
-    style = document.createElement('style');
-    style.setAttribute('type', 'text/css');
-    style.setAttribute('data-vite-dev-id', id);
-    style.textContent = content;
-    document.head.appendChild(style);
-    sheetsMap.set(id, style);
-  } else {
-    style.textContent = content;
-  }
+  return app;
 }
-export function removeStyle(id) {
-  const style = sheetsMap.get(id);
-  if (style) {
-    document.head.removeChild(style);
-    sheetsMap.delete(id);
-  }
-}
-export function createHotContext() {
-  return {
-    data: {},
-    accept() {},
-    acceptExports() {},
-    dispose() {},
-    prune() {},
-    invalidate() {},
-    on() {},
-    off() {},
-    send() {},
-  };
-}
-export function injectQuery(url) {
-  return url;
-}
-export class ErrorOverlay extends HTMLElement {}
-`);
-    });
-
-    const { createServer: createViteServer } = await import('vite');
-    const vite = await createViteServer({
-      server: {
-        middlewareMode: true,
-        hmr: false,
-        ws: false,
-      },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.resolve(__dirname, 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (_req: Request, res: Response) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
-  }
-
-  httpServer.listen(PORT, '0.0.0.0', () => {
-    console.log(`Holoo Corporate Apex ERP running on http://0.0.0.0:${PORT}`);
-  });
-}
-
-startServer();

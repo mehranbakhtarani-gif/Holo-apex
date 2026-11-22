@@ -1,3 +1,4 @@
+import { apiUrl } from '../lib/apiBase';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeftRight,
@@ -182,7 +183,7 @@ export const TreasuryView: React.FC<TreasuryViewProps> = ({ initialIntent, clear
     const reader = new FileReader();
     reader.onload = async () => {
       try {
-        const resp = await fetch('/api/ai/scan-document', {
+        const resp = await fetch(apiUrl('/api/ai/scan-document'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -221,7 +222,7 @@ export const TreasuryView: React.FC<TreasuryViewProps> = ({ initialIntent, clear
     const reader = new FileReader();
     reader.onload = async () => {
       try {
-        const resp = await fetch('/api/ai/scan-document', {
+        const resp = await fetch(apiUrl('/api/ai/scan-document'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

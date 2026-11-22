@@ -1,3 +1,4 @@
+import { apiUrl } from '../lib/apiBase';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
@@ -516,7 +517,7 @@ export const InvoicesView: React.FC<{ initialIntent?: string; clearIntent?: () =
     }
     setAiParsing(true);
     try {
-      const resp = await fetch('/api/ai/parse-invoice', {
+      const resp = await fetch(apiUrl('/api/ai/parse-invoice'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
