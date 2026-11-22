@@ -1,3 +1,4 @@
+import { apiUrl } from '../lib/apiBase';
 import React, { useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
@@ -146,7 +147,7 @@ export const SmartCopilotDrawer: React.FC<{
     }, 40);
 
     try {
-      const resp = await fetch('/api/ai/copilot', {
+      const resp = await fetch(apiUrl('/api/ai/copilot'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
