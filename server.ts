@@ -297,8 +297,7 @@ export async function createApp() {
         liveFxCache &&
         liveFxCache.items.length > 0 &&
         Date.now() - liveFxCache.fetchedAt < FX_CACHE_TTL_MS
-      ) {
-        res.json({
+      ) {        res.json({
           ...liveFxCache,
           cached: true,
         });
@@ -598,7 +597,6 @@ ${compactParties}
       const compactParties = Array.isArray(parties)
         ? parties.slice(0, 80).map((p: { id?: string; code?: string; name?: string }) => `${p.id} | ${p.code}: ${p.name}`).join('\n')
         : '';
-
       const instruction = `تو دستیار هوشمند صدور فاکتور هلو اپکس ۹.۶ هستی. از متن یا تصویر فاکتور/سفارش ارسالی، اقلام کالا، طرف‌حساب، وزن/کارتن و نرخ هر کیلوگرم را استخراج کن.
 قوانین:
 1. قیمت‌های خروجی (unitPriceIrr و discountIrr) باید به **ریال** باشند (اگر تومان بود در ۱۰ ضرب کن).
@@ -897,7 +895,6 @@ ${compactAccounts}`;
     auditTableName: string;
     projectRef: string;
   }
-
   function getValidatedSupabaseConfig(): ValidatedSupabaseConfig | null {
     const rawUrl = String(process.env.SUPABASE_URL || '').trim();
     const serviceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
@@ -1197,8 +1194,7 @@ ${compactAccounts}`;
 
     try {
       const delUrl = `${cfg.baseUrl}/rest/v1/${encodeURIComponent(cfg.tableName)}?owner_id=eq.${encodeURIComponent(backupId)}`;
-      const delResp = await fetch(delUrl, {
-        method: 'DELETE',
+      const delResp = await fetch(delUrl, {        method: 'DELETE',
         headers: buildSupabaseHeaders(cfg, { Prefer: 'return=minimal' }),
         signal: AbortSignal.timeout(7000),      });
       if (!delResp.ok) {
@@ -1497,8 +1493,7 @@ ${compactAccounts}`;
           headers: buildSupabaseHeaders(cfg, {
             Prefer: 'resolution=merge-duplicates,return=minimal',
           }),
-          body: JSON.stringify(upsertPayload),
-          signal: AbortSignal.timeout(10000),
+          body: JSON.stringify(upsertPayload),          signal: AbortSignal.timeout(10000),
         });
         if (!upsertResp.ok) {
           res.status(upsertResp.status).json({ error: 'خطا در ذخیره نسخه روی Supabase.' });
@@ -1549,65 +1544,6 @@ ${compactAccounts}`;
       res.status(502).json({ error: 'ارتباط با سرور Supabase برقرار نشد.' });
     }
   });
-
-  // Frontend serving is intentionally handled by server.node.ts, not the Worker bundle.
-    // Prevent Vite 8's @vite/client from opening a failing WebSocket to port 24678
-    // behind Cloud Run's single-port proxy while keeping CSS injection & HMR stubs working.
-    app.get('/@vite/client', (_req: Request, res: Response) => {
-      res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-      res.send(`
-const sheetsMap = new Map();
-export function updateStyle(id, content) {
-  let style = sheetsMap.get(id);
-  if (!style) {
-    style = document.createElement('style');
-    style.setAttribute('type', 'text/css');
-    style.setAttribute('data-vite-dev-id', id);
-    style.textContent = content;
-    document.head.appendChild(style);
-    sheetsMap.set(id, style);
-  } else {
-    style.textContent = content;
-  }
-}
-export function removeStyle(id) {
-  const style = sheetsMap.get(id);
-  if (style) {
-    document.head.removeChild(style);
-    sheetsMap.delete(id);
-  }
-}
-export function createHotContext() {
-  return {
-    data: {},
-    accept() {},
-    acceptExports() {},
-    dispose() {},
-    prune() {},
-    invalidate() {},
-    on() {},
-    off() {},
-    send() {},
-  };
-}
-export function injectQuery(url) {
-  return url;
-}
-export class ErrorOverlay extends HTMLElement {}
-`);
-    });
-
-    const { createServer: createViteServer } = await import('vite');
-    const vite = await createViteServer({
-      server: {
-        middlewareMode: true,
-        hmr: false,
-        ws: false,
-      },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  }
 
   return app;
 }
