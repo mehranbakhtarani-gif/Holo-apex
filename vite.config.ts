@@ -5,8 +5,11 @@ import path from 'path';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+const deploymentBase = process.env.GITHUB_PAGES === 'true' ? '/Holo-apex/' : '/';
+
 export default defineConfig(() => {
   return {
+    base: deploymentBase,
     plugins: [
       react(),
       tailwindcss(),
@@ -14,7 +17,7 @@ export default defineConfig(() => {
         registerType: 'autoUpdate',
         includeAssets: ['icon.svg', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png', 'pwa-maskable-512x512.png'],
         manifest: {
-          id: '/',
+          id: deploymentBase,
           name: 'هلو شرکتی Apex — سامانه جامع حسابداری',
           short_name: 'هلو Apex',
           description: 'سامانه جامع حسابداری شرکتی با هسته هلو Apex، داشبورد مدیریت مالی و گزارش‌گیری پیشرفته',
@@ -24,8 +27,8 @@ export default defineConfig(() => {
           orientation: 'any',
           dir: 'rtl',
           lang: 'fa',
-          start_url: '/',
-          scope: '/',
+          start_url: deploymentBase,
+          scope: deploymentBase,
           icons: [
             {
               src: '/pwa-192x192.png',
