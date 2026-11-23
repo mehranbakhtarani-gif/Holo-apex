@@ -1342,7 +1342,7 @@ ${compactAccounts}`;
       return;
     }
 
-    const verified = await verifyFirebaseBearerToken(req);
+    const verified = await verifySupabaseBearerToken(req);
     if (!verified || !isValidSafeId(verified.uid)) {
       res.status(401).json({ error: 'احراز هویت ابری الزامی است.' });
       return;
@@ -1381,7 +1381,7 @@ ${compactAccounts}`;
       return;
     }
 
-    const verified = await verifyFirebaseBearerToken(req);
+    const verified = await verifySupabaseBearerToken(req);
     if (!verified || !isValidSafeId(verified.uid)) {
       res.status(401).json({ error: 'برای خواندن از Supabase ابتدا با حساب ابری وارد شوید.' });
       return;
@@ -1452,7 +1452,7 @@ ${compactAccounts}`;
       return;
     }
 
-    const verified = await verifyFirebaseBearerToken(req);
+    const verified = await verifySupabaseBearerToken(req);
     if (!verified || !isValidSafeId(verified.uid)) {
       res.status(401).json({ error: 'احراز هویت ابری برای همگام‌سازی Supabase الزامی است.' });
       return;
