@@ -434,3 +434,19 @@ export async function redeemSupabasePairCode(code: string, deviceId: string, dev
     return {ok:false,error:'ارتباط با سرور برقرار نشد.'};
   }
 }
+
+export async function registerSupabaseDeviceToken(idToken: string, deviceId: string, deviceLabel: string): Promise<string | null> {
+  try {
+    const resp = await fetch(apiUrl('/api/supabase/device-token'), {
+      method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:`Bearer ${idToken}`},
+      body:JSON.stringify({deviceId,deviceLabel}),
+    });
+    const json = await resp.json().catch(() => ({})) as {deviceToken?:string};
+    if (!resp.ok || !json.deviceToken || !/^[a-f0-9]{64}$/.test(json.deviceToken)) return null;
+    saveSupabaseDeviceToken(json.deviceToken);
+    return json.deviceToken;
+  } catch {
+    return null;
+  }
+}
