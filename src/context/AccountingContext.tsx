@@ -804,16 +804,21 @@ export const AccountingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         err && typeof err === 'object' && 'code' in err
           ? String((err as { code?: unknown }).code || '')
           : '';
+      const message =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as { message?: unknown }).message || '')
+          : String(err || '');
+      console.error('Google sign-in failed:', {
+        code: code || 'unknown',
+        message,
+        name: err && typeof err === 'object' && 'name' in err ? String((err as { name?: unknown }).name || '') : '',
+        customData: err && typeof err === 'object' && 'customData' in err ? (err as { customData?: unknown }).customData : undefined,
+      });
       if (code === 'auth/popup-blocked') {
         showToast('پنجره ورود گوگل توسط مرورگر مسدود شد؛ لطفاً باز شدن Pop-up را مجاز کنید.');
       } else if (code === 'auth/network-request-failed') {
-        showToast('اتصال اینترنت برای ورود به حساب گوگل برقرار نشد.');
+        showToast(`خطای ارتباط گوگل: ${message.slice(0, 220) || 'Network request failed'}`);
       } else if (code !== 'auth/cancelled-popup-request' && code !== 'auth/popup-closed-by-user') {
-        const message =
-          err && typeof err === 'object' && 'message' in err
-            ? String((err as { message?: unknown }).message || '')
-            : String(err || '');
-        console.error('Google sign-in failed:', { code: code || 'unknown', message });
         showToast(`ورود گوگل ناموفق بود؛ کد: ${code || 'unknown'} — ${message.slice(0, 180) || 'بدون توضیح از Firebase'}`);
       }
     } finally {
