@@ -17,6 +17,7 @@ import {
 } from 'firebase/firestore';
 import {
   auth,
+  completeGoogleRedirectSignIn,
   db,
   handleFirestoreError,
   isFirestoreOfflineError,
@@ -383,12 +384,22 @@ export const AccountingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   useEffect(() => {
     testFirestoreConnection();
+    void completeGoogleRedirectSignIn()
+      .then((credential) => {
+        if (credential) showToast('ورود با حساب گوگل انجام شد. همگام‌سازی ابری فعال است.');
+      })
+      .catch((err: unknown) => {
+        const code = err && typeof err === 'object' && 'code' in err
+          ? String((err as { code?: unknown }).code || '')
+          : 'unknown';
+        showToast(`تکمیل ورود گوگل ناموفق بود (${code}). دامنه برنامه و تنظیمات OAuth را بررسی کنید.`);
+      });
     const unsub = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
       setAuthReady(true);
     });
     return () => unsub();
-  }, []);
+  }, [showToast]);
 
   // Atomic multi-device sequential counter using Firestore Transaction so 3 simultaneous devices never collide
   const reserveNextVoucherNumber = useCallback(
