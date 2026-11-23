@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { getAuth, getRedirectResult, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut, UserCredential } from 'firebase/auth';
 import {
   doc,
   Firestore,
@@ -161,14 +161,22 @@ export async function testFirestoreConnection(): Promise<boolean> {
   }
 }
 
-let pendingGoogleSignIn: Promise<Awaited<ReturnType<typeof signInWithPopup>> | null> | null = null;
+let pendingGoogleSignIn: Promise<UserCredential | null> | null = null;
+
+export async function completeGoogleRedirectSignIn() {
+  return getRedirectResult(auth);
+}
 
 export async function signInWithGoogle() {
   if (pendingGoogleSignIn) {
     return pendingGoogleSignIn;
   }
-  const request = signInWithPopup(auth, googleProvider)
-    .catch((err: unknown) => {
+  const isMobileBrowser =
+    typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const request = (isMobileBrowser
+    ? signInWithRedirect(auth, googleProvider).then(() => null)
+    : signInWithPopup(auth, googleProvider)
+  ).catch((err: unknown) => {
       const code =
         err && typeof err === 'object' && 'code' in err
           ? String((err as { code?: unknown }).code || '')
