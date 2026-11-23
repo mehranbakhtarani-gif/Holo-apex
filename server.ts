@@ -1,23 +1,6 @@
 import express, { Request, Response } from 'express';
 
 
-const ALLOWED_SIZES = new Set(['1K', '2K', '4K']);
-const ALLOWED_ASPECT_RATIOS = new Set([
-  '1:1',
-  '2:3',
-  '3:2',
-  '3:4',
-  '4:3',
-  '9:16',
-  '16:9',
-  '21:9',
-]);
-const ALLOWED_MODELS = new Set([
-  'gemini-3-pro-image-preview',
-  'gemini-nano-banana-2.1',
-  'gemini-3.1-flash-lite-image',
-]);
-
 export async function createApp() {
   const app = express();
   app.disable('x-powered-by');
