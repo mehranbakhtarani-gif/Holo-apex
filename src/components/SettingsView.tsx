@@ -102,6 +102,9 @@ export const SettingsView: React.FC<{
   const [fiscalYear, setFiscalYear] = useState(profile.fiscalYear);
   const [currencyUnit, setCurrencyUnit] = useState(profile.currencyUnit);
   const [deviceNameInput, setDeviceNameInput] = useState(deviceLabel);
+  const [supabasePairCode, setSupabasePairCode] = useState('');
+  const [supabasePairInput, setSupabasePairInput] = useState('');
+  const [pairingBusy, setPairingBusy] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cloudRef = useRef<HTMLDivElement | null>(null);
   const localBackupRef = useRef<HTMLDivElement | null>(null);
@@ -402,6 +405,56 @@ export const SettingsView: React.FC<{
             )}
           </div>
         </div>
+
+        {dualCloud && (
+          <div className="rounded-lg border border-emerald-200 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/20 p-4 space-y-3">
+            <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white">
+              <Database className="w-4 h-4 text-emerald-600" />
+              اتصال مستقل Supabase (بدون ورود گوگل)
+            </div>
+            <p className="text-xs leading-5 text-slate-600 dark:text-slate-300">
+              دستگاه اصلی با حساب گوگل کد پنج‌دقیقه‌ای می‌سازد. دستگاه دیگر با آن فقط یک‌بار جفت می‌شود و پس از آن برای همگام‌سازی Supabase به ورود گوگل نیاز ندارد.
+            </p>
+            {user ? (
+              <div className="space-y-2">
+                <button type="button" disabled={pairingBusy} onClick={async () => {
+                  setPairingBusy(true);
+                  const result = await dualCloud.generateSupabasePairCode();
+                  setSupabasePairCode(result.code || '');
+                  if (!result.ok) showToast(result.error || 'ساخت کد ناموفق بود.');
+                  setPairingBusy(false);
+                }} className="px-3 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold disabled:opacity-50">
+                  {pairingBusy ? 'در حال ساخت کد...' : 'ساخت کد جفت‌سازی برای دستگاه دیگر'}
+                </button>
+                {supabasePairCode && (
+                  <div className="rounded-lg bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-800 p-3">
+                    <div className="text-[11px] text-slate-500 mb-1">کد یک‌بارمصرف — اعتبار ۵ دقیقه</div>
+                    <div className="text-2xl tracking-[0.3em] font-bold font-mono text-center text-emerald-700 dark:text-emerald-400">{supabasePairCode}</div>
+                    <button type="button" onClick={() => { void navigator.clipboard?.writeText(supabasePairCode); showToast('کد جفت‌سازی کپی شد.'); }} className="mt-2 text-xs text-emerald-700 dark:text-emerald-400 underline">کپی کد</button>
+                  </div>
+                )}
+              </div>
+            ) : dualCloud.pairedDevice ? (
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">این دستگاه برای Supabase جفت شده است.</span>
+                <button type="button" onClick={dualCloud.disconnectPairedDevice} className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-xs">قطع اتصال این دستگاه</button>
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input inputMode="numeric" maxLength={8} value={supabasePairInput} onChange={(e) => setSupabasePairInput(e.target.value.replace(/\D/g, '').slice(0, 8))} placeholder="کد ۸ رقمی دستگاه اصلی" className="flex-1 min-w-0 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm tracking-widest text-center" />
+                <button type="button" disabled={pairingBusy || supabasePairInput.length !== 8} onClick={async () => {
+                  setPairingBusy(true);
+                  const result = await dualCloud.pairThisDevice(supabasePairInput);
+                  if (result.ok) { setSupabasePairInput(''); setSupabasePairCode(''); }
+                  else showToast(result.error || 'جفت‌سازی ناموفق بود.');
+                  setPairingBusy(false);
+                }} className="px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold disabled:opacity-50">
+                  {pairingBusy ? 'در حال اتصال...' : 'جفت‌سازی این دستگاه'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {dualCloud && isCloudMode && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-3 border-t border-slate-200 dark:border-slate-800 text-xs">
