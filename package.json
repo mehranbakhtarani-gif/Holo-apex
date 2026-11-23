@@ -13,7 +13,8 @@
     "lint:rules": "eslint firestore.rules",
     "worker:dev": "npx wrangler dev",
     "worker:dry-run": "npx wrangler deploy --dry-run",
-    "worker:deploy": "npx wrangler deploy"
+    "worker:deploy": "npx wrangler deploy",
+    "patch:cloudflare": "node scripts/patch-cloudflare-iconv.cjs"
   },
   "dependencies": {
     "@firebase/eslint-plugin-security-rules": "^0.0.2",
