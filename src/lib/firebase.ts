@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, getRedirectResult, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut, UserCredential } from 'firebase/auth';
+import { getAuth, getRedirectResult, GoogleAuthProvider, signInWithPopup, signOut, UserCredential } from 'firebase/auth';
 import {
   doc,
   Firestore,
@@ -171,12 +171,10 @@ export async function signInWithGoogle() {
   if (pendingGoogleSignIn) {
     return pendingGoogleSignIn;
   }
-  const isMobileBrowser =
-    typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  const request = (isMobileBrowser
-    ? signInWithRedirect(auth, googleProvider).then(() => null)
-    : signInWithPopup(auth, googleProvider)
-  ).catch((err: unknown) => {
+  // GitHub Pages uses a different origin from Firebase authDomain. Firebase redirect
+  // sign-in can lose its cross-origin helper state in browsers with partitioned storage.
+  // Popup sign-in is the supported workaround for non-Firebase hosting.
+  const request = signInWithPopup(auth, googleProvider).catch((err: unknown) => {
       const code =
         err && typeof err === 'object' && 'code' in err
           ? String((err as { code?: unknown }).code || '')
