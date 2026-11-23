@@ -809,7 +809,12 @@ export const AccountingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       } else if (code === 'auth/network-request-failed') {
         showToast('اتصال اینترنت برای ورود به حساب گوگل برقرار نشد.');
       } else if (code !== 'auth/cancelled-popup-request' && code !== 'auth/popup-closed-by-user') {
-        showToast('ورود با حساب گوگل با خطا مواجه گردید. لطفاً دوباره تلاش کنید.');
+        const message =
+          err && typeof err === 'object' && 'message' in err
+            ? String((err as { message?: unknown }).message || '')
+            : String(err || '');
+        console.error('Google sign-in failed:', { code: code || 'unknown', message });
+        showToast(`ورود گوگل ناموفق بود؛ کد: ${code || 'unknown'} — ${message.slice(0, 180) || 'بدون توضیح از Firebase'}`);
       }
     } finally {
       setIsSigningIn(false);
