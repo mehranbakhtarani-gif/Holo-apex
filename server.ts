@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import { GoogleGenAI, ThinkingLevel, Type } from '@google/genai';
+
 
 const ALLOWED_SIZES = new Set(['1K', '2K', '4K']);
 const ALLOWED_ASPECT_RATIOS = new Set([
@@ -17,21 +17,6 @@ const ALLOWED_MODELS = new Set([
   'gemini-nano-banana-2.1',
   'gemini-3.1-flash-lite-image',
 ]);
-
-function createGeminiClient() {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return null;
-  }
-  return new GoogleGenAI({
-    apiKey,
-    httpOptions: {
-      headers: {
-        'User-Agent': 'aistudio-build',
-      },
-    },
-  });
-}
 
 export async function createApp() {
   const app = express();
@@ -372,236 +357,197 @@ export async function createApp() {
 
   app.post('/api/images/generate', async (req: Request, res: Response) => {
     try {
-      const {
-        prompt,
-        imageSize = '1K',
-        aspectRatio = '16:9',
-        model = 'gemini-3-pro-image-preview',
-      } = req.body ?? {};
-
+      const { prompt, imageSize = '1K', aspectRatio = '16:9' } = req.body ?? {};
       if (typeof prompt !== 'string' || prompt.trim().length < 4 || prompt.trim().length > 1500) {
-        res.status(400).json({
-          error: 'شرح تصویر (Prompt) باید بین ۴ تا ۱۵۰۰ کاراکتر باشد.',
-        });
+        res.status(400).json({ error: 'شرح تصویر باید بین ۴ تا ۱۵۰۰ کاراکتر باشد.' });
         return;
       }
-
-      const safeSize = ALLOWED_SIZES.has(imageSize) ? imageSize : '1K';
-      const safeRatio = ALLOWED_ASPECT_RATIOS.has(aspectRatio) ? aspectRatio : '16:9';
-      const safeModel = ALLOWED_MODELS.has(model) ? model : 'gemini-3-pro-image-preview';
-
-      const ai = createGeminiClient();
-      if (!ai) {
-        res.status(503).json({
-          error:
-            'کلید API جمنای تنظیم نشده است. لطفاً از بخش Settings > Secrets در محیط اجرا، کلید API معتبر را متصل کنید.',
-          code: 'MISSING_API_KEY',
-        });
+      const apiKey = String(process.env.OPENAI_API_KEY || '').trim();
+      if (!apiKey) {
+        res.status(503).json({ error: 'کلید OPENAI_API_KEY در Secretهای Cloudflare تنظیم نشده است.', code: 'MISSING_API_KEY' });
         return;
       }
-
-      const response = await ai.models.generateContent({
-        model: safeModel,
-        contents: {
-          parts: [{ text: prompt.trim() }],
-        },
-        config: {
-          imageConfig: {
-            aspectRatio: safeRatio,
-            imageSize: safeSize,
-          },
-        },
+      const sizeByRatio: Record<string, string> = {
+        '1:1': '1024x1024', '2:3': '1024x1536', '3:4': '1024x1536', '9:16': '1024x1536',
+        '3:2': '1536x1024', '4:3': '1536x1024', '16:9': '1536x1024', '21:9': '1536x1024',
+      };
+      const safeRatio = Object.prototype.hasOwnProperty.call(sizeByRatio, aspectRatio) ? aspectRatio : '16:9';
+      const response = await fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'gpt-image-2',
+          prompt: prompt.trim(),
+          size: sizeByRatio[safeRatio],
+          quality: imageSize === '4K' || imageSize === '2K' ? 'high' : 'medium',
+          output_format: 'png',
+        }),
+        signal: AbortSignal.timeout(90000),
       });
-
-      const parts = response.candidates?.[0]?.content?.parts ?? [];
-      let imageDataUrl: string | null = null;
-      let textCaption = '';
-
-      for (const part of parts) {
-        if (part.inlineData?.data) {
-          const mime = part.inlineData.mimeType ?? 'image/png';
-          imageDataUrl = `data:${mime};base64,${part.inlineData.data}`;
-        } else if (part.text) {
-          textCaption += part.text;
-        }
+      const payload = await response.json().catch(() => ({})) as {
+        data?: { b64_json?: string }[];
+        error?: { message?: string };
+      };
+      if (!response.ok) {
+        const error = new Error(payload.error?.message || 'OpenAI image generation failed') as Error & { status?: number };
+        error.status = response.status;
+        throw error;
       }
-
-      if (!imageDataUrl) {
-        res.status(502).json({
-          error: 'مدل تصویری خروجی گرافیکی تولید نکرد. لطفاً شرح تصویر را دقیق‌تر وارد کرده و دوباره تلاش کنید.',
-          caption: textCaption,
-        });
+      const imageBase64 = payload.data?.[0]?.b64_json;
+      if (!imageBase64) {
+        res.status(502).json({ error: 'مدل تصویری خروجی معتبر برنگرداند.' });
         return;
       }
-
       res.json({
-        imageUrl: imageDataUrl,
-        caption: textCaption.trim(),
-        model: safeModel,
-        imageSize: safeSize,
+        imageUrl: 'data:image/png;base64,' + imageBase64,
+        caption: '',
+        model: 'gpt-image-2',
+        imageSize,
         aspectRatio: safeRatio,
       });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      let status = 500;
-      let userMessage = `خطا در تولید تصویر: ${message}`;
-
-      if (message.includes('403') || message.includes('PERMISSION_DENIED') || message.includes('API_KEY_INVALID')) {
-        status = 403;
-        userMessage =
-          'دسترسی به مدل تصویرسازی رد شد (403/400). لطفاً کلید API دارای صورت‌حساب فعال را در بخش Settings > Secrets بررسی و انتخاب کنید.';
-      } else if (message.includes('429') || message.includes('RESOURCE_EXHAUSTED')) {
-        status = 429;
-        userMessage =
-          'سهمیه استفاده از مدل تصویرسازی با کیفیت بالا به پایان رسیده است (429). لطفاً در بخش Settings > Secrets یک کلید API دارای پلن پرداختی متصل کنید.';
-      } else if (message.includes('404') || message.includes('NOT_FOUND')) {
-        status = 404;
-        userMessage =
-          'مدل انتخاب‌شده در دسترس نیست. لطفاً مدل gemini-nano-banana-2.1 یا gemini-3-pro-image-preview را بررسی کنید.';
+      const status = Number((err as { status?: number })?.status || 0);
+      if (status === 401 || status === 403) {
+        res.status(403).json({ error: 'کلید OpenAI معتبر نیست یا دسترسی API فعال نیست.' });
+      } else if (status === 429) {
+        res.status(429).json({ error: 'سهمیه یا محدودیت درخواست OpenAI تکمیل شده است.' });
+      } else {
+        console.error('[OpenAI Image Error]', err instanceof Error ? err.message : String(err));
+        res.status(status >= 400 && status < 500 ? status : 502).json({ error: 'تولید تصویر با OpenAI ناموفق بود. تنظیمات API و مدل را بررسی کنید.' });
       }
-
-      res.status(status).json({ error: userMessage });
     }
   });
 
-  // ---------------- HOLOO APEX 9.6 GEMINI AI FINANCIAL INTELLIGENCE ----------------
-  const SMART_MODEL = 'gemini-4-hydrogen';
+  // ---------------- HOLOO APEX 9.6 OPENAI FINANCIAL INTELLIGENCE ----------------
+  const SMART_MODEL = String(process.env.OPENAI_MODEL || 'gpt-6.1-sol').trim();
+
+  class OpenAiRequestError extends Error {
+    status: number;
+    constructor(message: string, status: number) {
+      super(message);
+      this.name = 'OpenAiRequestError';
+      this.status = status;
+    }
+  }
+
+  async function generateOpenAiJson(prompt: string, imageDataUrl?: string): Promise<Record<string, any>> {
+    const apiKey = String(process.env.OPENAI_API_KEY || '').trim();
+    if (!apiKey) throw new OpenAiRequestError('OPENAI_API_KEY is not configured', 503);
+    const content: Record<string, unknown>[] = [{ type: 'input_text', text: prompt }];
+    if (imageDataUrl) content.push({ type: 'input_image', image_url: imageDataUrl });
+
+    const response = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: SMART_MODEL,
+        input: [{ role: 'user', content }],
+        text: { format: { type: 'json_object' } },
+        max_output_tokens: 5000,
+      }),
+      signal: AbortSignal.timeout(60000),
+    });
+    const payload = await response.json().catch(() => ({})) as {
+      output?: { content?: { type?: string; text?: string }[] }[];
+      output_text?: string;
+      error?: { message?: string };
+    };
+    if (!response.ok) throw new OpenAiRequestError(payload.error?.message || 'OpenAI Responses API request failed', response.status);
+    const outputText = payload.output_text || (payload.output || [])
+      .flatMap((item) => item.content || [])
+      .filter((part) => part.type === 'output_text' && typeof part.text === 'string')
+      .map((part) => part.text)
+      .join('\n');
+    if (!outputText) throw new OpenAiRequestError('OpenAI returned an empty response', 502);
+    try {
+      const parsed = JSON.parse(outputText);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Expected JSON object');
+      return parsed as Record<string, any>;
+    } catch {
+      throw new OpenAiRequestError('OpenAI returned invalid JSON', 502);
+    }
+  }
 
   const handleAiError = (res: Response, err: unknown, fallbackMsg: string) => {
+    const status = Number((err as { status?: number })?.status || 0);
     const message = err instanceof Error ? err.message : String(err);
-    console.error('[AI Route Error]', fallbackMsg, message);
-    if (message.includes('429') || message.includes('RESOURCE_EXHAUSTED')) {
-      res.status(429).json({
-        error: 'سهمیه موقت سرویس هوش مصنوعی تکمیل شده است (429). چند لحظه بعد دوباره تلاش کنید.',
-      });
-      return;
+    console.error('[OpenAI Route Error]', fallbackMsg, message);
+    if (status === 401 || status === 403) {
+      res.status(403).json({ error: 'کلید OpenAI معتبر نیست یا دسترسی API فعال نیست. Secret با نام OPENAI_API_KEY را بررسی کنید.' });
+    } else if (status === 429) {
+      res.status(429).json({ error: 'سهمیه یا محدودیت درخواست OpenAI تکمیل شده است.' });
+    } else if (status === 503) {
+      res.status(503).json({ error: 'کلید OPENAI_API_KEY در Secretهای Cloudflare تنظیم نشده است.' });
+    } else {
+      res.status(status >= 400 && status < 500 ? status : 502).json({ error: fallbackMsg + '. لطفاً دوباره تلاش کنید.' });
     }
-    if (message.includes('403') || message.includes('API_KEY_INVALID')) {
-      res.status(403).json({
-        error: 'کلید API هوش مصنوعی معتبر نیست یا دسترسی ندارد. لطفاً کلید GEMINI_API_KEY را بررسی کنید.',
-      });
-      return;
-    }
-    res.status(500).json({ error: `${fallbackMsg}. لطفاً دوباره تلاش کنید.` });
   };
 
-  // 1. Natural-Language Persian Transaction -> Balanced Double-Entry Voucher
+  // 1. Persian transaction -> balanced double-entry voucher draft
   app.post('/api/ai/parse-voucher', async (req: Request, res: Response) => {
     try {
       const { text, currencyUnit = 'IRT', accounts = [], parties = [] } = req.body ?? {};
       if (typeof text !== 'string' || text.trim().length < 4 || text.trim().length > 1500) {
-        res.status(400).json({ error: 'لطفاً شرح فارسی رویداد مالی را حداقل با ۴ کاراکتر وارد کنید.' });
+        res.status(400).json({ error: 'شرح رویداد مالی باید بین ۴ تا ۱۵۰۰ کاراکتر باشد.' });
         return;
       }
-
-      const ai = createGeminiClient();
-      if (!ai) {
-        res.status(503).json({
-          error: 'کلید GEMINI_API_KEY تنظیم نشده است. پس از تنظیم کلید، قابلیت تبدیل هوشمند متن به سند فعال می‌شود.',
-        });
-        return;
-      }
-
       const compactAccounts = Array.isArray(accounts)
-        ? accounts.slice(0, 120).map((a: { code?: string; title?: string; category?: string }) => `${a.code}: ${a.title} (${a.category})`).join('\n')
+        ? accounts.slice(0, 120).map((a: { code?: string; title?: string; category?: string }) =>
+            String(a.code || '') + ': ' + String(a.title || '') + ' (' + String(a.category || '') + ')').join('\n')
         : '';
       const compactParties = Array.isArray(parties)
-        ? parties.slice(0, 80).map((p: { id?: string; code?: string; name?: string }) => `${p.id} | ${p.code}: ${p.name}`).join('\n')
+        ? parties.slice(0, 80).map((p: { id?: string; code?: string; name?: string }) =>
+            String(p.id || '') + ' | ' + String(p.code || '') + ': ' + String(p.name || '')).join('\n')
         : '';
+      const prompt = [
+        'تو حسابدار ارشد آشنا با استانداردهای حسابداری ایران هستی. رویداد مالی را به پیش‌نویس سند دوبل تبدیل کن.',
+        'مبالغ خروجی عدد صحیح ریال باشند. اگر کاربر تومان گفت در ۱۰ ضرب کن. واحد نمایش فعلی: ' + (currencyUnit === 'IRT' ? 'تومان' : 'ریال') + '.',
+        'فقط از کدهای حساب فهرست استفاده کن. partyId فقط در صورت تطبیق دقیق با فهرست مقدار بگیرد.',
+        'هر ردیف فقط بدهکار یا بستانکار داشته باشد. سند باید دقیقاً تراز باشد؛ اختلاف را با ساختن عدد یا تغییر مبلغ جبران نکن.',
+        'اگر اطلاعات کافی نیست خطوط را خالی بگذار و reasoning را توضیح بده.',
+        'فهرست کدینگ حساب:\n' + compactAccounts,
+        'فهرست طرف‌حساب‌ها:\n' + compactParties,
+        'رویداد مالی:\n"""' + text.trim() + '"""',
+        'خروجی JSON با کلیدهای description, voucherType, reasoning, lines. هر line شامل accountCode, partyId, description, debitIrr, creditIrr باشد.',
+      ].join('\n\n');
 
-      const prompt = `تو یک حسابدار ارشد شرکتی متخصص نرم‌افزار هلو اپکس ۹.۶ و استانداردهای حسابداری ایران هستی.
-متن فارسی زیر را به یک سند حسابداری دوبل کاملاً تراز (جمع بدهکار = جمع بستانکار) تبدیل کن.
-قوانین حیاتی:
-1. تمام مبالغ خروجی (debitIrr و creditIrr) باید به **ریال** (عدد صحیح مثبت) باشند. اگر کاربر مبلغ را به «تومان» یا «میلیون تومان» گفت حتماً در ۱۰ ضرب کن تا به ریال تبدیل شود (واحد نمایش فعلی کاربر: ${currencyUnit === 'IRT' ? 'تومان' : 'ریال'}).
-2. فقط از کدهای حساب معین موجود در لیست زیر استفاده کن و مناسب‌ترین کد را انتخاب کن.
-3. اگر نام طرف‌حساب در متن آمده و در لیست زیر هست، partyId دقیق آن را بگذار؛ در غیر این صورت رشته خالی "" بگذار.
-4. در هر ردیف فقط یکی از debitIrr یا creditIrr بزرگ‌تر از صفر باشد و دیگری ۰ باشد.
-5. مجموع debitIrr همه ردیف‌ها باید دقیقاً برابر مجموع creditIrr باشد.
-
-کدینگ حساب‌های شرکت:
-${compactAccounts}
-
-لیست طرف‌حساب‌ها (id | code: name):
-${compactParties}
-
-متن رویداد مالی کاربر:
-"""${text.trim()}"""`;
-
-      const response = await ai.models.generateContent({
-        model: SMART_MODEL,
-        contents: prompt,
-        config: {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              description: { type: Type.STRING, description: 'شرح رسمی کلی سند به فارسی' },
-              voucherType: {
-                type: Type.STRING,
-                description: 'یکی از: general, sales, purchase, treasury, payroll, depreciation, opening',
-              },
-              reasoning: { type: Type.STRING, description: 'توضیح کوتاه ۱ جمله‌ای درباره نحوه سندزدن' },
-              lines: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    accountCode: { type: Type.STRING },
-                    partyId: { type: Type.STRING },
-                    description: { type: Type.STRING },
-                    debitIrr: { type: Type.INTEGER },
-                    creditIrr: { type: Type.INTEGER },
-                  },
-                  required: ['accountCode', 'description', 'debitIrr', 'creditIrr'],
-                },
-              },
-            },
-            required: ['description', 'voucherType', 'lines'],
-          },
-        },
-      });
-
-      const parsed = JSON.parse(response.text || '{}');
+      const parsed = await generateOpenAiJson(prompt);
       const rawLines = Array.isArray(parsed.lines) ? parsed.lines : [];
-      if (rawLines.length < 2) {
-        res.status(422).json({ error: 'امکان استخراج حداقل ۲ آرتیکل معتبر از متن وجود نداشت. لطفاً مبلغ و شرح را دقیق‌تر بنویسید.' });
+      if (rawLines.length < 2 || rawLines.length > 100) {
+        res.status(422).json({ error: 'امکان استخراج تعداد معتبر آرتیکل از متن وجود نداشت. شرح و مبلغ را دقیق‌تر وارد کنید.' });
         return;
       }
-
       const validAccountCodes = new Set(
         Array.isArray(accounts) ? accounts.map((a: { code?: string }) => String(a.code || '')) : []
       );
-      const fallbackCode = accounts[0]?.code || '10101';
-
-      const sanitized = rawLines.map((l: Record<string, unknown>) => {
-        const code = String(l.accountCode || '').trim();
-        const d = Math.max(0, Math.round(Number(l.debitIrr) || 0));
-        const c = Math.max(0, Math.round(Number(l.creditIrr) || 0));
+      const sanitized = rawLines.map((line: Record<string, unknown>) => {
+        const code = String(line.accountCode || '').trim();
+        const debit = Number(line.debitIrr);
+        const credit = Number(line.creditIrr);
+        if (!Number.isSafeInteger(debit) || !Number.isSafeInteger(credit) || debit < 0 || credit < 0 || (debit > 0 && credit > 0)) {
+          throw new OpenAiRequestError('AI returned invalid voucher amounts', 422);
+        }
+        if (validAccountCodes.size > 0 && !validAccountCodes.has(code)) {
+          throw new OpenAiRequestError('AI selected an account code outside the supplied chart of accounts', 422);
+        }
         return {
-          accountCode: validAccountCodes.size === 0 || validAccountCodes.has(code) ? code : fallbackCode,
-          partyId: typeof l.partyId === 'string' && l.partyId.trim() ? l.partyId.trim() : undefined,
-          description: String(l.description || parsed.description || '').trim(),
-          debitIrr: d > 0 && c > 0 ? (d >= c ? d : 0) : d,
-          creditIrr: d > 0 && c > 0 ? (c > d ? c : 0) : c,
+          accountCode: code,
+          partyId: typeof line.partyId === 'string' && line.partyId.trim() ? line.partyId.trim() : undefined,
+          description: String(line.description || parsed.description || '').trim().slice(0, 300),
+          debitIrr: debit,
+          creditIrr: credit,
         };
       });
-
-      const sumD = sanitized.reduce((s: number, l: { debitIrr: number }) => s + l.debitIrr, 0);
-      const sumC = sanitized.reduce((s: number, l: { creditIrr: number }) => s + l.creditIrr, 0);
-      if (sumD !== sumC && sanitized.length >= 2) {
-        const last = sanitized[sanitized.length - 1];
-        if (sumD > sumC && last.creditIrr > 0) {
-          last.creditIrr += sumD - sumC;
-        } else if (sumC > sumD && last.debitIrr > 0) {
-          last.debitIrr += sumC - sumD;
-        }
+      const sumDebit = sanitized.reduce((sum: number, line: { debitIrr: number }) => sum + line.debitIrr, 0);
+      const sumCredit = sanitized.reduce((sum: number, line: { creditIrr: number }) => sum + line.creditIrr, 0);
+      if (!Number.isSafeInteger(sumDebit) || !Number.isSafeInteger(sumCredit) || sumDebit <= 0 || sumDebit !== sumCredit) {
+        res.status(422).json({ error: 'پیش‌نویس تولیدشده تراز نیست؛ هیچ مبلغی به‌صورت خودکار اصلاح نشد.' });
+        return;
       }
-
       res.json({
-        description: String(parsed.description || text.trim()),
+        description: String(parsed.description || text.trim()).slice(0, 300),
         voucherType: String(parsed.voucherType || 'general'),
-        reasoning: String(parsed.reasoning || ''),
+        reasoning: String(parsed.reasoning || '').slice(0, 1000),
         lines: sanitized,
       });
     } catch (err: unknown) {
@@ -609,299 +555,136 @@ ${compactParties}
     }
   });
 
-  // 2. Multimodal AI Invoice / Proforma Reader (Text or Photo -> Structured Invoice Rows)
+  // 2. Invoice / proforma extraction from text or image
   app.post('/api/ai/parse-invoice', async (req: Request, res: Response) => {
     try {
       const { text = '', imageDataUrl = '', invoiceType = 'sale', products = [], parties = [] } = req.body ?? {};
       const hasText = typeof text === 'string' && text.trim().length >= 3 && text.trim().length <= 4000;
-      const hasImage =
-        typeof imageDataUrl === 'string' &&
-        imageDataUrl.startsWith('data:image/') &&
-        imageDataUrl.length <= MAX_BASE64_IMAGE_CHARS;
-
+      const hasImage = typeof imageDataUrl === 'string' && imageDataUrl.startsWith('data:image/') && imageDataUrl.length <= MAX_BASE64_IMAGE_CHARS;
       if (!hasText && !hasImage) {
-        res.status(400).json({ error: 'لطفاً متن معتبر سفارش/فاکتور (حداکثر ۴۰۰۰ کاراکتر) وارد کنید یا تصویر PNG/JPG/WEBP بارگذاری نمایید.' });
+        res.status(400).json({ error: 'متن سفارش/فاکتور یا تصویر معتبر PNG/JPG/WEBP لازم است.' });
         return;
       }
-
-      const ai = createGeminiClient();
-      if (!ai) {
-        res.status(503).json({
-          error: 'کلید GEMINI_API_KEY تنظیم نشده است. پس از تنظیم کلید، خواندن هوشمند فاکتور فعال می‌شود.',
-        });
-        return;
-      }
-
-      const compactProducts = Array.isArray(products)
-        ? products.slice(0, 120).map((p: { id?: string; sku?: string; name?: string; sellPrice?: number; buyPrice?: number; kgPerCarton?: number }) =>
-            `${p.id} | ${p.sku} | ${p.name} | فروش:${p.sellPrice} | خرید:${p.buyPrice} | وزن‌کارتن:${p.kgPerCarton ?? 25}`
-          ).join('\n')
-        : '';
-      const compactParties = Array.isArray(parties)
-        ? parties.slice(0, 80).map((p: { id?: string; code?: string; name?: string }) => `${p.id} | ${p.code}: ${p.name}`).join('\n')
-        : '';
-
-      const instruction = `تو دستیار هوشمند صدور فاکتور هلو اپکس ۹.۶ هستی. از متن یا تصویر فاکتور/سفارش ارسالی، اقلام کالا، طرف‌حساب، وزن/کارتن و نرخ هر کیلوگرم را استخراج کن.
-قوانین:
-1. قیمت‌های خروجی (unitPriceIrr و discountIrr) باید به **ریال** باشند (اگر تومان بود در ۱۰ ضرب کن).
-2. بهترین productId را از لیست کالاهای انبار زیر پیدا کن و تطبیق بده؛ اگر دقیقاً نبود نزدیک‌ترین کالا را انتخاب کن و نام خوانده‌شده را در productNameHint بنویس.
-3. اگر تعداد کارتن داده شده ولی وزن داده نشده، وزن را برابر تعداد کارتن ضربدر وزن‌کارتن کالا حساب کن.
-4. نوع فاکتور فعلی کاربر: ${String(invoiceType).slice(0, 32)}.
-
-لیست کالاهای انبار (id | sku | name | sellPrice | buyPrice | kgPerCarton):
-${compactProducts}
-
-لیست طرف‌حساب‌ها (id | code: name):
-${compactParties}
-${hasText ? `\nمتن سفارش/فاکتور:\n"""${text.trim()}"""` : ''}`;
-
-      const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
-        { text: instruction },
-      ];
-
+      let safeImage: string | undefined;
       if (hasImage) {
         const match = imageDataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\s]+)$/);
         if (!match || !ALLOWED_IMAGE_MIMES.has(match[1].toLowerCase())) {
-          res.status(400).json({ error: 'فقط فرمت‌های تصویری PNG، JPG و WEBP مجاز هستند.' });
+          res.status(400).json({ error: 'فقط فرمت‌های PNG، JPG و WEBP مجاز هستند.' });
           return;
         }
-        parts.push({
-          inlineData: {
-            mimeType: match[1].toLowerCase(),
-            data: match[2],
-          },
-        });
+        safeImage = imageDataUrl;
       }
-
-      const response = await ai.models.generateContent({
-        model: SMART_MODEL,
-        contents: { parts },
-        config: {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              partyId: { type: Type.STRING },
-              partyNameHint: { type: Type.STRING },
-              notes: { type: Type.STRING },
-              items: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    productId: { type: Type.STRING },
-                    productNameHint: { type: Type.STRING },
-                    cartonCount: { type: Type.NUMBER },
-                    quantityKg: { type: Type.NUMBER },
-                    unitPriceIrr: { type: Type.INTEGER },
-                    discountIrr: { type: Type.INTEGER },
-                  },
-                  required: ['productId', 'quantityKg', 'unitPriceIrr'],
-                },
-              },
-            },
-            required: ['items'],
-          },
-        },
-      });
-
-      const parsed = JSON.parse(response.text || '{}');
+      const compactProducts = Array.isArray(products)
+        ? products.slice(0, 120).map((p: { id?: string; sku?: string; name?: string; sellPrice?: number; buyPrice?: number; kgPerCarton?: number }) =>
+            String(p.id || '') + ' | ' + String(p.sku || '') + ' | ' + String(p.name || '') + ' | فروش:' + String(p.sellPrice ?? '') + ' | خرید:' + String(p.buyPrice ?? '') + ' | وزن‌کارتن:' + String(p.kgPerCarton ?? 25)).join('\n')
+        : '';
+      const compactParties = Array.isArray(parties)
+        ? parties.slice(0, 80).map((p: { id?: string; code?: string; name?: string }) =>
+            String(p.id || '') + ' | ' + String(p.code || '') + ': ' + String(p.name || '')).join('\n')
+        : '';
+      const prompt = [
+        'تو دستیار هوشمند صدور فاکتور هلو اپکس هستی. از متن یا تصویر، اقلام کالا، طرف‌حساب، تعداد کارتن، وزن و نرخ را استخراج کن.',
+        'قیمت‌ها ریال باشند؛ اگر تومان بود در ۱۰ ضرب کن. productId را فقط از فهرست کالاها انتخاب کن؛ اگر تطبیق قطعی نیست productId را خالی و productNameHint را پر کن.',
+        'اگر تعداد کارتن داده شده و وزن نیست، وزن را با وزن هر کارتن کالا محاسبه کن. نوع فاکتور: ' + String(invoiceType).slice(0, 32),
+        'کالاها:\n' + compactProducts,
+        'طرف‌حساب‌ها:\n' + compactParties,
+        hasText ? 'متن فاکتور:\n"""' + text.trim() + '"""' : '',
+        'خروجی JSON شامل partyId, partyNameHint, notes, items باشد. هر item شامل productId, productNameHint, cartonCount, quantityKg, unitPriceIrr, discountIrr باشد.',
+      ].filter(Boolean).join('\n\n');
+      const parsed = await generateOpenAiJson(prompt, safeImage);
       res.json({
-        partyId: typeof parsed.partyId === 'string' ? parsed.partyId : '',
-        partyNameHint: typeof parsed.partyNameHint === 'string' ? parsed.partyNameHint : '',
-        notes: typeof parsed.notes === 'string' ? parsed.notes : '',
-        items: Array.isArray(parsed.items) ? parsed.items : [],
+        partyId: typeof parsed.partyId === 'string' ? parsed.partyId.slice(0, 180) : '',
+        partyNameHint: typeof parsed.partyNameHint === 'string' ? parsed.partyNameHint.slice(0, 200) : '',
+        notes: typeof parsed.notes === 'string' ? parsed.notes.slice(0, 1000) : '',
+        items: Array.isArray(parsed.items) ? parsed.items.slice(0, 200) : [],
       });
     } catch (err: unknown) {
       handleAiError(res, err, 'خطا در تحلیل هوشمند فاکتور');
     }
   });
 
-  // 3. Holoo Apex 9.6 Smart Financial Copilot Chat
+  // 3. Financial copilot
   app.post('/api/ai/copilot', async (req: Request, res: Response) => {
     try {
       const { message, history = [], snapshot = {} } = req.body ?? {};
       if (typeof message !== 'string' || message.trim().length < 2 || message.trim().length > 2000) {
-        res.status(400).json({ error: 'لطفاً سؤال خود را بین ۲ تا ۲۰۰۰ کاراکتر وارد کنید.' });
+        res.status(400).json({ error: 'سؤال باید بین ۲ تا ۲۰۰۰ کاراکتر باشد.' });
         return;
       }
-
-      const ai = createGeminiClient();
-      if (!ai) {
-        res.status(503).json({
-          error: 'کلید GEMINI_API_KEY تنظیم نشده است. لطفاً کلید API را در تنظیمات محیط اجرا وارد کنید.',
-        });
-        return;
-      }
-
       const historyText = Array.isArray(history)
-        ? history
-            .slice(-6)
-            .map((h: { role?: string; text?: string }) => `${h.role === 'user' ? 'کاربر' : 'مشاور'}: ${String(h.text || '').slice(0, 600)}`)
-            .join('\n')
+        ? history.slice(-6).map((h: { role?: string; text?: string }) =>
+            (h.role === 'user' ? 'کاربر' : 'مشاور') + ': ' + String(h.text || '').slice(0, 600)).join('\n')
         : '';
-
-      const safeSnapshotStr = JSON.stringify(snapshot ?? {}).slice(0, 35_000);
-
-      const prompt = `تو «مشاور هوشمند مالی و مالیاتی هلو اپکس ۹.۶» برای مدیرعامل و مدیر مالی این شرکت بازرگانی نخ هستی.
-پاسخ تو باید:
-- کاملاً مستند به اعداد واقعی داده‌شده در JSON زیر باشد (هیچ عددی از خودت نساز).
-- کوتاه، دقیق، اجرایی، به فارسی روان و حرفه‌ای با بولت‌پوینت‌های تمیز باشد.
-- در صورت نیاز، حداکثر ۳ دکمه اقدام مستقیم (suggestedActions) به ماژول‌های واقعی برنامه پیشنهاد بده.
-ماژول‌های مجاز: dashboard, invoices, vouchers, audit, accounts, parties, inventory, treasury, currencies, commercial, corporate, reports, settings.
-
-اطلاعات زنده دفاتر مالی شرکت (JSON):
-${safeSnapshotStr}
-
-${historyText ? `سابقه گفتگوی اخیر:\n${historyText}\n` : ''}
-سؤال فعلی کاربر:
-${message.trim()}`;
-
-      const response = await ai.models.generateContent({
-        model: SMART_MODEL,
-        contents: prompt,
-        config: {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              reply: { type: Type.STRING, description: 'پاسخ دقیق تحلیلی به زبان فارسی' },
-              suggestedActions: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    label: { type: Type.STRING },
-                    module: { type: Type.STRING },
-                    intent: { type: Type.STRING },
-                  },
-                  required: ['label', 'module'],
-                },
-              },
-            },
-            required: ['reply'],
-          },
-        },
-      });
-
-      const parsed = JSON.parse(response.text || '{}');
-      res.json({
-        reply: String(parsed.reply || 'پاسخی تولید نشد.'),
-        suggestedActions: Array.isArray(parsed.suggestedActions)
-          ? parsed.suggestedActions.slice(0, 3)
-          : [],
-      });
+      let safeSnapshot = '{}';
+      try { safeSnapshot = JSON.stringify(snapshot ?? {}).slice(0, 35000); } catch { safeSnapshot = '{}'; }
+      const prompt = [
+        'تو مشاور هوشمند مالی و مالیاتی هلو اپکس برای مدیرعامل و مدیر مالی هستی.',
+        'پاسخ فقط متکی به اعداد واقعی JSON باشد و هیچ عددی نساز. کوتاه، دقیق، اجرایی و به فارسی حرفه‌ای پاسخ بده.',
+        'حداکثر ۳ اقدام از این ماژول‌ها پیشنهاد بده: dashboard, invoices, vouchers, audit, accounts, parties, inventory, treasury, currencies, commercial, corporate, reports, settings.',
+        'اطلاعات دفاتر:\n' + safeSnapshot,
+        historyText ? 'سابقه گفتگو:\n' + historyText : '',
+        'سؤال:\n' + message.trim(),
+        'خروجی JSON با reply و suggestedActions (آرایه‌ای از label, module, intent) برگردان.',
+      ].filter(Boolean).join('\n\n');
+      const parsed = await generateOpenAiJson(prompt);
+      const allowedModules = new Set(['dashboard', 'invoices', 'vouchers', 'audit', 'accounts', 'parties', 'inventory', 'treasury', 'currencies', 'commercial', 'corporate', 'reports', 'settings']);
+      const actions = Array.isArray(parsed.suggestedActions)
+        ? parsed.suggestedActions.filter((a: Record<string, unknown>) => allowedModules.has(String(a.module || ''))).slice(0, 3).map((a: Record<string, unknown>) => ({
+            label: String(a.label || '').slice(0, 80),
+            module: String(a.module || ''),
+            intent: String(a.intent || '').slice(0, 240),
+          }))
+        : [];
+      res.json({ reply: String(parsed.reply || 'پاسخی تولید نشد.').slice(0, 5000), suggestedActions: actions });
     } catch (err: unknown) {
       handleAiError(res, err, 'خطا در پاسخ‌گویی مشاور هوشمند مالی');
     }
   });
 
-  // 4. Multimodal AI OCR Scanner for Sayadi Cheques, Bank Transfer Receipts & Expense Bills
+  // 4. OCR for cheques, bank receipts and expense bills
   app.post('/api/ai/scan-document', async (req: Request, res: Response) => {
     try {
       const { imageDataUrl = '', hintKind = 'auto', parties = [], accounts = [] } = req.body ?? {};
-      if (
-        typeof imageDataUrl !== 'string' ||
-        !imageDataUrl.startsWith('data:image/') ||
-        imageDataUrl.length > MAX_BASE64_IMAGE_CHARS
-      ) {
-        res.status(400).json({ error: 'لطفاً تصویر واضح و کم‌حجم (PNG/JPG/WEBP) از چک یا رسید بارگذاری کنید.' });
+      if (typeof imageDataUrl !== 'string' || !imageDataUrl.startsWith('data:image/') || imageDataUrl.length > MAX_BASE64_IMAGE_CHARS) {
+        res.status(400).json({ error: 'تصویر معتبر PNG/JPG/WEBP از چک یا رسید لازم است.' });
         return;
       }
-
-      const ai = createGeminiClient();
-      if (!ai) {
-        res.status(503).json({
-          error: 'کلید GEMINI_API_KEY تنظیم نشده است. پس از تنظیم کلید، اسکن هوشمند اسناد فعال می‌شود.',
-        });
-        return;
-      }
-
       const match = imageDataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\s]+)$/);
       if (!match || !ALLOWED_IMAGE_MIMES.has(match[1].toLowerCase())) {
-        res.status(400).json({ error: 'فقط فرمت‌های تصویری PNG، JPG و WEBP برای اسکن مجاز هستند.' });
+        res.status(400).json({ error: 'فقط فرمت‌های PNG، JPG و WEBP مجاز هستند.' });
         return;
       }
-
       const compactParties = Array.isArray(parties)
-        ? parties.slice(0, 80).map((p: { id?: string; name?: string }) => `${p.id} | ${p.name}`).join('\n')
+        ? parties.slice(0, 80).map((p: { id?: string; name?: string }) => String(p.id || '') + ' | ' + String(p.name || '')).join('\n')
         : '';
       const compactAccounts = Array.isArray(accounts)
-        ? accounts
-            .filter((a: { code?: string }) => String(a.code || '').startsWith('8') || String(a.code || '').startsWith('102'))
-            .slice(0, 40)
-            .map((a: { code?: string; title?: string }) => `${a.code}: ${a.title}`)
-            .join('\n')
+        ? accounts.filter((a: { code?: string }) => String(a.code || '').startsWith('8') || String(a.code || '').startsWith('102')).slice(0, 40).map((a: { code?: string; title?: string }) => String(a.code || '') + ': ' + String(a.title || '')).join('\n')
         : '';
-
-      const prompt = `تو یک سیستم دقیق OCR حسابداری ایرانی برای نرم‌افزار هلو اپکس ۹.۶ هستی.
-این تصویر می‌تواند برگه چک صیادی (بنفش/صیاد)، فیش واریزی/کارت‌به‌کارت/پایا/ساتنا بانکی، یا رسید و قبض هزینه تنخواه باشد (نوع پیشنهادی کاربر: ${hintKind}).
-تمام اطلاعات کلیدی را دقیق استخراج کن:
-1. مبلغ (amountIrr) حتماً به **ریال** (عدد صحیح مثبت) برگردانده شود. اگر روی رسید به تومان بود در ۱۰ ضرب کن.
-2. تاریخ‌ها (issueDate و dueDate) به فرمت شمسی YYYY/MM/DD با ارقام انگلیسی باشند (مثلاً 1405/03/25).
-3. برای چک صیادی، شناسه ۱۶ رقمی صیاد (sayadiId) و شماره سریال چک (serial) و نام بانک (bankName) و شعبه (branch) را دقیق بخوان.
-4. اگر نام شخص/شرکت با لیست طرف‌حساب‌های زیر تطابق دارد، partyId دقیق آن را برگردان.
-5. برای رسید هزینه تنخواه، نزدیک‌ترین کد هزینه (suggestedAccountCode) از کدینگ زیر را انتخاب کن.
-
-طرف‌حساب‌ها:
-${compactParties}
-
-کدهای هزینه/بانک:
-${compactAccounts}`;
-
-      const response = await ai.models.generateContent({
-        model: SMART_MODEL,
-        contents: {
-          parts: [
-            { text: prompt },
-            { inlineData: { mimeType: match[1], data: match[2] } },
-          ],
-        },
-        config: {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              documentKind: {
-                type: Type.STRING,
-                description: 'یکی از: cheque, bank_receipt, expense_bill',
-              },
-              sayadiId: { type: Type.STRING },
-              serial: { type: Type.STRING },
-              bankName: { type: Type.STRING },
-              branch: { type: Type.STRING },
-              partyId: { type: Type.STRING },
-              partyNameHint: { type: Type.STRING },
-              amountIrr: { type: Type.INTEGER },
-              issueDate: { type: Type.STRING },
-              dueDate: { type: Type.STRING },
-              trackingNumber: { type: Type.STRING },
-              description: { type: Type.STRING },
-              suggestedAccountCode: { type: Type.STRING },
-            },
-            required: ['documentKind', 'amountIrr', 'description'],
-          },
-        },
-      });
-
-      const parsed = JSON.parse(response.text || '{}');
+      const prompt = [
+        'تو سیستم OCR حسابداری ایرانی هستی. تصویر می‌تواند چک صیادی، فیش بانکی یا قبض هزینه باشد. نوع پیشنهادی: ' + String(hintKind).slice(0, 40),
+        'amountIrr عدد صحیح ریال باشد؛ اگر روی رسید تومان بود در ۱۰ ضرب کن. تاریخ‌ها شمسی YYYY/MM/DD با ارقام انگلیسی باشند.',
+        'برای چک صیادی شناسه ۱۶ رقمی، سریال، بانک و شعبه را بخوان. partyId فقط در صورت تطبیق با فهرست طرف‌حساب‌ها تعیین شود.',
+        'suggestedAccountCode فقط از کدینگ ارسالی انتخاب شود.',
+        'طرف‌حساب‌ها:\n' + compactParties,
+        'کدهای هزینه و بانک:\n' + compactAccounts,
+        'خروجی JSON شامل documentKind, sayadiId, serial, bankName, branch, partyId, partyNameHint, amountIrr, issueDate, dueDate, trackingNumber, description, suggestedAccountCode باشد.',
+      ].join('\n\n');
+      const parsed = await generateOpenAiJson(prompt, imageDataUrl);
+      const amount = Number(parsed.amountIrr);
       res.json({
         documentKind: String(parsed.documentKind || 'bank_receipt'),
         sayadiId: String(parsed.sayadiId || '').replace(/[^0-9]/g, '').slice(0, 16),
         serial: String(parsed.serial || '').slice(0, 48),
         bankName: String(parsed.bankName || '').slice(0, 100),
         branch: String(parsed.branch || '').slice(0, 100),
-        partyId: String(parsed.partyId || ''),
-        partyNameHint: String(parsed.partyNameHint || ''),
-        amountIrr: Math.max(0, Math.round(Number(parsed.amountIrr) || 0)),
-        issueDate: String(parsed.issueDate || ''),
-        dueDate: String(parsed.dueDate || ''),
-        trackingNumber: String(parsed.trackingNumber || ''),
-        description: String(parsed.description || ''),
-        suggestedAccountCode: String(parsed.suggestedAccountCode || '80105'),
+        partyId: String(parsed.partyId || '').slice(0, 180),
+        partyNameHint: String(parsed.partyNameHint || '').slice(0, 200),
+        amountIrr: Number.isSafeInteger(amount) && amount > 0 ? amount : 0,
+        issueDate: String(parsed.issueDate || '').slice(0, 20),
+        dueDate: String(parsed.dueDate || '').slice(0, 20),
+        trackingNumber: String(parsed.trackingNumber || '').slice(0, 80),
+        description: String(parsed.description || '').slice(0, 500),
+        suggestedAccountCode: String(parsed.suggestedAccountCode || '').slice(0, 32),
       });
     } catch (err: unknown) {
       handleAiError(res, err, 'خطا در اسکن هوشمند تصویر چک/رسید');
