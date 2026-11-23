@@ -387,3 +387,50 @@ export async function pullSnapshotFromSupabase(
     return { ok: false, error: 'ارتباط با Supabase برقرار نشد.' };
   }
 }
+
+
+const SUPABASE_DEVICE_TOKEN_KEY = 'holoo_apex_supabase_device_token_v1';
+
+export function loadSupabaseDeviceToken(): string | null {
+  try {
+    const token = localStorage.getItem(SUPABASE_DEVICE_TOKEN_KEY);
+    return token && /^[a-f0-9]{64}$/.test(token) ? token : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveSupabaseDeviceToken(token: string): void {
+  if (!/^[a-f0-9]{64}$/.test(token)) throw new Error('مجوز دستگاه معتبر نیست.');
+  localStorage.setItem(SUPABASE_DEVICE_TOKEN_KEY, token);
+}
+
+export async function createSupabasePairCode(idToken: string, deviceId: string): Promise<{ok:boolean;code?:string;expiresAt?:string;error?:string}> {
+  try {
+    const resp = await fetch(apiUrl('/api/supabase/pair-code'), {
+      method: 'POST',
+      headers: {'Content-Type':'application/json', Authorization:`Bearer ${idToken}`},
+      body: JSON.stringify({deviceId}),
+    });
+    const json = await resp.json().catch(() => ({})) as {code?:string;expiresAt?:string;error?:string};
+    return resp.ok && json.code ? {ok:true,code:json.code,expiresAt:json.expiresAt} : {ok:false,error:json.error || 'ساخت کد جفت‌سازی ناموفق بود.'};
+  } catch {
+    return {ok:false,error:'ارتباط با سرور برقرار نشد.'};
+  }
+}
+
+export async function redeemSupabasePairCode(code: string, deviceId: string, deviceLabel: string): Promise<{ok:boolean;deviceToken?:string;error?:string}> {
+  try {
+    const resp = await fetch(apiUrl('/api/supabase/pair'), {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({code,deviceId,deviceLabel}),
+    });
+    const json = await resp.json().catch(() => ({})) as {deviceToken?:string;error?:string};
+    if (!resp.ok || !json.deviceToken) return {ok:false,error:json.error || 'جفت‌سازی دستگاه ناموفق بود.'};
+    saveSupabaseDeviceToken(json.deviceToken);
+    return {ok:true,deviceToken:json.deviceToken};
+  } catch {
+    return {ok:false,error:'ارتباط با سرور برقرار نشد.'};
+  }
+}
