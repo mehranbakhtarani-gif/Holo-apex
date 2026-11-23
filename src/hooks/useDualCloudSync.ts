@@ -5,6 +5,7 @@ import {
   createSupabasePairCode,
   redeemSupabasePairCode,
   loadSupabaseDeviceToken,
+  registerSupabaseDeviceToken,
   ConflictResolutionPolicy,
   deleteSupabaseBackup,
   enqueueOfflineOutboxItem,
@@ -366,6 +367,23 @@ export function useDualCloudSync() {
   useEffect(() => {
     void refreshSupabaseStatus();
   }, [refreshSupabaseStatus]);
+
+  // Provision a dedicated Supabase credential while Firebase is available.
+  // The saved device token survives a later Google sign-out.
+  useEffect(() => {
+    if (!user || !isOnline) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const firebaseToken = await user.getIdToken();
+        const deviceToken = await registerSupabaseDeviceToken(firebaseToken, deviceId, deviceLabel);
+        if (!cancelled && deviceToken) setPairedDeviceToken(deviceToken);
+      } catch {
+        // Firebase and Supabase remain independent; a later online cycle can retry.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user, isOnline, deviceId, deviceLabel]);
 
   const syncSupabaseNow = useCallback(
     async (silent = false): Promise<boolean> => {
