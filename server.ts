@@ -968,6 +968,163 @@ ${compactAccounts}`;
     };
   }
 
+  async function sha256Hex(value: string): Promise<string> {
+    const bytes = new TextEncoder().encode(value);
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  function randomDeviceToken(): string {
+    const bytes = crypto.getRandomValues(new Uint8Array(32));
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  async function verifySupabaseBearerToken(
+    req: Request
+  ): Promise<{ uid: string; email: string; authType: 'firebase' | 'device' } | null> {
+    const firebaseUser = await verifyFirebaseBearerToken(req);
+    if (firebaseUser) return { ...firebaseUser, authType: 'firebase' };
+
+    const authHeader = String(req.headers.authorization || '');
+    if (!authHeader.startsWith('Bearer ')) return null;
+    const token = authHeader.slice(7).trim();
+    if (!/^[a-f0-9]{64}$/.test(token)) return null;
+    const cfg = getValidatedSupabaseConfig();
+    if (!cfg) return null;
+
+    try {
+      const tokenHash = await sha256Hex(token);
+      const url = `${cfg.baseUrl}/rest/v1/holoo_apex_device_tokens?token_hash=eq.${tokenHash}&revoked_at=is.null&select=owner_id,device_id,device_label&limit=1`;
+      const resp = await fetch(url, {
+        headers: buildSupabaseHeaders(cfg),
+        signal: AbortSignal.timeout(6000),
+      });
+      if (!resp.ok) return null;
+      const rows = (await resp.json()) as { owner_id?: string; device_id?: string }[];
+      const row = rows?.[0];
+      if (!row?.owner_id || !/^[a-zA-Z0-9_-]{4,180}$/.test(row.owner_id)) return null;
+      void fetch(`${cfg.baseUrl}/rest/v1/holoo_apex_device_tokens?token_hash=eq.${tokenHash}`, {
+        method: 'PATCH',
+        headers: buildSupabaseHeaders(cfg, { Prefer: 'return=minimal' }),
+        body: JSON.stringify({ last_used_at: new Date().toISOString() }),
+      }).catch(() => undefined);
+      return { uid: row.owner_id, email: '', authType: 'device' };
+    } catch {
+      return null;
+    }
+  }
+
+  // A Firebase-authenticated owner creates a short-lived, single-use pairing code.
+  app.post('/api/supabase/pair-code', async (req: Request, res: Response) => {
+    const cfg = getValidatedSupabaseConfig();
+    if (!cfg) {
+      res.status(503).json({ error: 'Supabase در تنظیمات سرور پیکربندی نشده است.' });
+      return;
+    }
+    const owner = await verifyFirebaseBearerToken(req);
+    if (!owner || !/^[a-zA-Z0-9_-]{4,180}$/.test(owner.uid)) {
+      res.status(401).json({ error: 'برای ساخت کد جفت‌سازی، ورود گوگل در دستگاه اصلی لازم است.' });
+      return;
+    }
+    const body = (req.body || {}) as { deviceId?: unknown };
+    const deviceId = String(body.deviceId || '').slice(0, 128);
+    if (deviceId.length < 8) {
+      res.status(400).json({ error: 'شناسه دستگاه معتبر نیست.' });
+      return;
+    }
+    try {
+      await fetch(`${cfg.baseUrl}/rest/v1/holoo_apex_pair_codes?owner_id=eq.${encodeURIComponent(owner.uid)}&expires_at=lt.${encodeURIComponent(new Date().toISOString())}`, {
+        method: 'DELETE',
+        headers: buildSupabaseHeaders(cfg, { Prefer: 'return=minimal' }),
+      });
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        const code = String(10_000_000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 90_000_000));
+        const expiresAt = new Date(Date.now() + 5 * 60_000).toISOString();
+        const resp = await fetch(`${cfg.baseUrl}/rest/v1/holoo_apex_pair_codes`, {
+          method: 'POST',
+          headers: buildSupabaseHeaders(cfg, { Prefer: 'return=minimal' }),
+          body: JSON.stringify({
+            code_hash: await sha256Hex(code),
+            owner_id: owner.uid,
+            created_by_device_id: deviceId,
+            expires_at: expiresAt,
+          }),
+        });
+        if (resp.ok) {
+          res.json({ code, expiresAt, expiresInSeconds: 300 });
+          return;
+        }
+        if (resp.status !== 409) break;
+      }
+      res.status(502).json({ error: 'ساخت کد جفت‌سازی ناموفق بود.' });
+    } catch {
+      res.status(502).json({ error: 'ارتباط با Supabase برقرار نشد.' });
+    }
+  });
+
+  // Redeem a pairing code once; the resulting device token is shown only in this response.
+  app.post('/api/supabase/pair', async (req: Request, res: Response) => {
+    const cfg = getValidatedSupabaseConfig();
+    if (!cfg) {
+      res.status(503).json({ error: 'Supabase در تنظیمات سرور پیکربندی نشده است.' });
+      return;
+    }
+    const body = (req.body || {}) as { code?: unknown; deviceId?: unknown; deviceLabel?: unknown };
+    const code = String(body.code || '').replace(/\D/g, '');
+    const deviceId = String(body.deviceId || '').slice(0, 128);
+    const deviceLabel = String(body.deviceLabel || 'دستگاه کاری').slice(0, 80);
+    if (!/^\d{8}$/.test(code) || deviceId.length < 8) {
+      res.status(400).json({ error: 'کد یا شناسه دستگاه معتبر نیست.' });
+      return;
+    }
+    try {
+      const codeHash = await sha256Hex(code);
+      const lookup = await fetch(`${cfg.baseUrl}/rest/v1/holoo_apex_pair_codes?code_hash=eq.${codeHash}&used_at=is.null&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&select=owner_id&limit=1`, {
+        headers: buildSupabaseHeaders(cfg),
+        signal: AbortSignal.timeout(6000),
+      });
+      if (!lookup.ok) {
+        res.status(502).json({ error: 'بررسی کد جفت‌سازی ناموفق بود.' });
+        return;
+      }
+      const rows = (await lookup.json()) as { owner_id?: string }[];
+      const ownerId = rows?.[0]?.owner_id;
+      if (!ownerId) {
+        res.status(400).json({ error: 'کد منقضی شده، قبلاً استفاده شده یا نادرست است.' });
+        return;
+      }
+      const consume = await fetch(`${cfg.baseUrl}/rest/v1/holoo_apex_pair_codes?code_hash=eq.${codeHash}&used_at=is.null&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&select=code_hash`, {
+        method: 'PATCH',
+        headers: buildSupabaseHeaders(cfg, { Prefer: 'return=representation' }),
+        body: JSON.stringify({ used_at: new Date().toISOString() }),
+      });
+      const consumed = consume.ok ? ((await consume.json().catch(() => [])) as unknown[]) : [];
+      if (!Array.isArray(consumed) || consumed.length !== 1) {
+        res.status(409).json({ error: 'این کد قبلاً در دستگاه دیگری استفاده شده است.' });
+        return;
+      }
+      const deviceToken = randomDeviceToken();
+      const tokenHash = await sha256Hex(deviceToken);
+      await fetch(`${cfg.baseUrl}/rest/v1/holoo_apex_device_tokens?owner_id=eq.${encodeURIComponent(ownerId)}&device_id=eq.${encodeURIComponent(deviceId)}&revoked_at=is.null`, {
+        method: 'PATCH',
+        headers: buildSupabaseHeaders(cfg, { Prefer: 'return=minimal' }),
+        body: JSON.stringify({ revoked_at: new Date().toISOString() }),
+      });
+      const saveToken = await fetch(`${cfg.baseUrl}/rest/v1/holoo_apex_device_tokens`, {
+        method: 'POST',
+        headers: buildSupabaseHeaders(cfg, { Prefer: 'return=minimal' }),
+        body: JSON.stringify({ token_hash: tokenHash, owner_id: ownerId, device_id: deviceId, device_label: deviceLabel }),
+      });
+      if (!saveToken.ok) {
+        res.status(502).json({ error: 'ثبت مجوز دستگاه جدید ناموفق بود.' });
+        return;
+      }
+      res.json({ ok: true, deviceToken, ownerId, deviceId, deviceLabel });
+    } catch {
+      res.status(502).json({ error: 'ارتباط با سرور Supabase برقرار نشد.' });
+    }
+  });
+
   // Public health check for Supabase connectivity (never returns secrets)
   app.get('/api/supabase/status', async (_req: Request, res: Response) => {
     const cfg = getValidatedSupabaseConfig();
@@ -1126,7 +1283,7 @@ ${compactAccounts}`;
       return;
     }
 
-    const verified = await verifyFirebaseBearerToken(req);
+    const verified = await verifySupabaseBearerToken(req);
     if (!verified || !isValidSafeId(verified.uid)) {
       res.status(401).json({ error: 'برای مشاهده پشتیبان‌های Supabase ابتدا وارد حساب ابری شوید.' });
       return;
