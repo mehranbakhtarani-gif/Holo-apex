@@ -331,9 +331,9 @@ export function useDualCloudSync() {
 
   // ---------------- SUPABASE AUTO-SYNC + 3-BACKUP ROLLING RETENTION ----------------
   const refreshSupabaseBackups = useCallback(async () => {
-    if (!isOnline || !user) return null;
+    if (!isOnline || (!user && !pairedDeviceToken)) return null;
     try {
-      const idToken = await user.getIdToken();
+      const idToken = user ? await user.getIdToken() : pairedDeviceToken!;
       const res = await fetchSupabaseBackups(idToken);
       if (res.ok) {
         if (res.backups) setSupabaseBackups(res.backups);
