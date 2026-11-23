@@ -64,6 +64,47 @@ import {
   computeTrialBalance,
 } from '../lib/accountingEngine';
 import { generateSafeId, getTodayShamsi } from '../lib/format';
+
+function validateVoucherLines(lines: VoucherLine[]): { cleanLines: VoucherLine[]; totalDebit: number; totalCredit: number } {
+  if (!Array.isArray(lines) || lines.length < 2) {
+    throw new Error('سند حسابداری باید حداقل دو آرتیکل داشته باشد.');
+  }
+  if (lines.length > 100) {
+    throw new Error('هر سند حداکثر می‌تواند ۱۰۰ آرتیکل داشته باشد. ردیف‌ها را در چند سند تفکیک کنید.');
+  }
+
+  let totalDebit = 0;
+  let totalCredit = 0;
+  for (const line of lines) {
+    if (
+      !line ||
+      typeof line.accountCode !== 'string' ||
+      !line.accountCode.trim() ||
+      typeof line.debit !== 'number' ||
+      typeof line.credit !== 'number' ||
+      !Number.isFinite(line.debit) ||
+      !Number.isFinite(line.credit)
+    ) {
+      throw new Error('اطلاعات یکی از آرتیکل‌های سند معتبر نیست.');
+    }
+    if (line.debit < 0 || line.credit < 0) {
+      throw new Error('مبالغ بدهکار و بستانکار آرتیکل‌های سند نمی‌تواند منفی باشد.');
+    }
+    if (line.debit > 0 && line.credit > 0) {
+      throw new Error('در هر ردیف سند فقط یکی از ستون‌های بدهکار یا بستانکار باید دارای مقدار باشد.');
+    }
+    totalDebit += line.debit;
+    totalCredit += line.credit;
+    if (!Number.isFinite(totalDebit) || !Number.isFinite(totalCredit)) {
+      throw new Error('جمع مبالغ سند از محدوده عددی معتبر خارج است.');
+    }
+  }
+
+  if (totalDebit !== totalCredit) {
+    throw new Error('سند حسابداری تراز نیست! جمع بدهکار و بستانکار باید دقیقاً برابر باشد.');
+  }
+  return { cleanLines: lines.map((line) => ({ ...line })), totalDebit, totalCredit };
+}
 import {
   annotateVoucherLinesWithCurrency,
   BASE_CURRENCY_CODE,
@@ -1099,21 +1140,7 @@ export const AccountingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       currencyCode?: string;
       exchangeRate?: number;
     }): Promise<Voucher> => {
-      for (const l of payload.lines) {
-        const d = Number(l.debit) || 0;
-        const c = Number(l.credit) || 0;
-        if (d < 0 || c < 0) {
-          throw new Error('مبالغ بدهکار و بستانکار آرتیکل‌های سند نمی‌تواند منفی باشد.');
-        }
-        if (d > 0 && c > 0) {
-          throw new Error('در هر ردیف سند فقط یکی از ستون‌های بدهکار یا بستانکار باید دارای مقدار باشد.');
-        }
-      }
-      const totalDebit = payload.lines.reduce((s, l) => s + (Number(l.debit) || 0), 0);
-      const totalCredit = payload.lines.reduce((s, l) => s + (Number(l.credit) || 0), 0);
-      if (Math.abs(totalDebit - totalCredit) > 0 || payload.lines.length < 2) {
-        throw new Error('سند حسابداری تراز نیست! جمع بدهکار و بستانکار باید دقیقاً برابر باشد.');
-      }
+      const { cleanLines, totalDebit, totalCredit } = validateVoucherLines(payload.lines);
       const localMax = vouchers.reduce((max, v) => Math.max(max, v.voucherNumber || 0), 0);
       const nextNumber = await reserveNextVoucherNumber(localMax);
       const id = generateSafeId('vch');
@@ -1121,7 +1148,7 @@ export const AccountingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const normCode = normalizeCurrencyCode(payload.currencyCode);
       const isFx = isForeignCurrency(normCode) && Number(payload.exchangeRate) > 0;
       const safeRate = isFx ? Number(payload.exchangeRate) : undefined;
-      const cleanLines = payload.lines.slice(0, 100);
+      // The full validated line set is persisted; never truncate a balanced voucher.
       const foreignTotalDebit = isFx
         ? roundCurrency(
             cleanLines.reduce((s, l) => s + (Number(l.foreignDebit) || 0), 0),
@@ -1220,22 +1247,19 @@ export const AccountingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         showToast('اسناد دائم طبق قانون دفاتر قابل ویرایش مستقیم نیستند؛ از دکمه «صدور سند اصلاحی/معکوس» استفاده کنید.');
         return;
       }
-      for (const l of payload.lines) {
-        const d = Number(l.debit) || 0;
-        const c = Number(l.credit) || 0;
-        if (d < 0 || c < 0 || (d > 0 && c > 0)) {
-          showToast('آرتیکل نامعتبر: مبالغ منفی یا ثبت همزمان بدهکار و بستانکار در یک ردیف مجاز نیست.');
-          return;
-        }
-      }
-      const totalDebit = payload.lines.reduce((s, l) => s + (Number(l.debit) || 0), 0);
-      const totalCredit = payload.lines.reduce((s, l) => s + (Number(l.credit) || 0), 0);
-      if (Math.abs(totalDebit - totalCredit) > 0 || payload.lines.length < 2) {
-        showToast('اختلاف بدهکار و بستانکار سند باید دقیقاً صفر باشد.');
+      let cleanLines: VoucherLine[];
+      let totalDebit: number;
+      let totalCredit: number;
+      try {
+        const validated = validateVoucherLines(payload.lines);
+        cleanLines = validated.cleanLines;
+        totalDebit = validated.totalDebit;
+        totalCredit = validated.totalCredit;
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : 'آرتیکل‌های سند معتبر نیستند.');
         return;
       }
       const cleanDesc = payload.description.trim().slice(0, 300);
-      const cleanLines = payload.lines.slice(0, 100);
       const normCode = normalizeCurrencyCode(payload.currencyCode);
       const isFx = isForeignCurrency(normCode) && Number(payload.exchangeRate) > 0;
       const safeRate = isFx ? Number(payload.exchangeRate) : 1;
