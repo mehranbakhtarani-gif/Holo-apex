@@ -3,12 +3,19 @@ const path = require('node:path');
 
 const root = path.join(process.cwd(), 'node_modules');
 let patched = 0;
+const visited = new Set();
 
 function walk(dir) {
   if (!fs.existsSync(dir)) return;
+  let realDir;
+  try { realDir = fs.realpathSync(dir); } catch { return; }
+  if (visited.has(realDir)) return;
+  visited.add(realDir);
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
-    if (!entry.isDirectory()) continue;
+    let isDirectory = false;
+    try { isDirectory = fs.statSync(full).isDirectory(); } catch { continue; }
+    if (!isDirectory || entry.name === '.bin') continue;
     if (entry.name === 'iconv-lite') {
       const packageFile = path.join(full, 'package.json');
       if (fs.existsSync(packageFile)) {
@@ -27,7 +34,6 @@ function walk(dir) {
         }
       }
     }
-    if (entry.name.startsWith('.')) continue;
     walk(full);
   }
 }
