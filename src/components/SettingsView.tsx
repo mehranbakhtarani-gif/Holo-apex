@@ -456,7 +456,7 @@ export const SettingsView: React.FC<{
           </div>
         )}
 
-        {dualCloud && isCloudMode && (
+        {dualCloud && (isCloudMode || dualCloud.pairedDevice) && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-3 border-t border-slate-200 dark:border-slate-800 text-xs">
             {/* Firebase Rolling 3-Backup Card */}
             <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-3">
