@@ -98,7 +98,48 @@ export async function createApp() {
   const ALLOWED_IMAGE_MIMES = new Set(['image/png', 'image/jpeg', 'image/webp']);
   const MAX_BASE64_IMAGE_CHARS = 7_500_000;
 
-  app.use(express.json({ limit: '10mb' }));
+  // Worker-compatible JSON parser. Express's body-parser dependency is not
+  // fully supported by the Cloudflare Node HTTP runtime, so parse the request
+  // stream directly with an explicit size limit.
+  app.use((req: Request, res: Response, next: express.NextFunction) => {
+    if (req.method !== 'POST' && req.method !== 'PUT' && req.method !== 'PATCH' && req.method !== 'DELETE') {
+      req.body = {};
+      next();
+      return;
+    }
+    const contentType = String(req.headers['content-type'] || '').toLowerCase();
+    if (!contentType.includes('application/json')) {
+      req.body = {};
+      next();
+      return;
+    }
+    let rawBody = '';
+    let tooLarge = false;
+    req.setEncoding('utf8');
+    req.on('data', (chunk: string) => {
+      if (tooLarge) return;
+      rawBody += chunk;
+      if (rawBody.length > 10 * 1024 * 1024) {
+        tooLarge = true;
+        rawBody = '';
+      }
+    });
+    req.on('end', () => {
+      if (tooLarge) {
+        res.status(413).json({ error: 'حجم درخواست بیش از حد مجاز است.' });
+        return;
+      }
+      try {
+        req.body = rawBody ? JSON.parse(rawBody) : {};
+        next();
+      } catch {
+        res.status(400).json({ error: 'ساختار JSON درخواست معتبر نیست.' });
+      }
+    });
+    req.on('error', () => {
+      if (!res.headersSent) res.status(400).json({ error: 'خواندن درخواست ناموفق بود.' });
+    });
+  });
   app.use('/api/ai', createRateLimiter(30));
   app.use('/api/images', createRateLimiter(15));
   app.use('/api/supabase', createRateLimiter(60));
