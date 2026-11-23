@@ -72,3 +72,11 @@ jobs:
           fi
       - name: Deploy Worker
         run: bunx wrangler deploy
+      - name: Smoke test deployed API and Supabase connection
+        env:
+          WORKER_URL: https://holo-apex-api-preview.mehranbakhtarani.workers.dev
+        run: |
+          curl --fail --silent --show-error "$WORKER_URL/api/health" | tee /tmp/health.json
+          jq -e '.status == "ok"' /tmp/health.json
+          curl --fail --silent --show-error "$WORKER_URL/api/supabase/status" | tee /tmp/supabase-status.json
+          jq -e '.configured == true and .connected == true and .tableReady == true' /tmp/supabase-status.json
