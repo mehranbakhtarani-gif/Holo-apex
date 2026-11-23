@@ -2,6 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAccounting } from '../context/AccountingContext';
 import {
   clearOfflineOutbox,
+  createSupabasePairCode,
+  redeemSupabasePairCode,
+  loadSupabaseDeviceToken,
   ConflictResolutionPolicy,
   deleteSupabaseBackup,
   enqueueOfflineOutboxItem,
@@ -114,6 +117,7 @@ export function useDualCloudSync() {
   const [isSupabaseSyncing, setIsSupabaseSyncing] = useState(false);
   const [lastConflictNote, setLastConflictNote] = useState<string | null>(null);
   const [supabaseBackups, setSupabaseBackups] = useState<CloudBackupMeta[]>([]);
+  const [pairedDeviceToken, setPairedDeviceToken] = useState<string | null>(() => loadSupabaseDeviceToken());
 
   // ---- Firebase Cloud Backup State (3-version rolling retention + manual push/pull) ----
   const [firebaseBackups, setFirebaseBackups] = useState<CloudBackupMeta[]>([]);
@@ -339,7 +343,7 @@ export function useDualCloudSync() {
       // ignore transient errors
     }
     return null;
-  }, [isOnline, user]);
+  }, [isOnline, user, pairedDeviceToken]);
 
   const refreshSupabaseStatus = useCallback(async () => {
     if (!isOnline) {
@@ -353,11 +357,11 @@ export function useDualCloudSync() {
     }
     const status = await fetchSupabaseServerStatus();
     setSupabaseStatus(status);
-    if (status.configured && status.tableReady && user) {
+    if (status.configured && status.tableReady && (user || pairedDeviceToken)) {
       void refreshSupabaseBackups();
     }
     return status;
-  }, [isOnline, user, refreshSupabaseBackups]);
+  }, [isOnline, user, pairedDeviceToken, refreshSupabaseBackups]);
 
   useEffect(() => {
     void refreshSupabaseStatus();
@@ -387,9 +391,9 @@ export function useDualCloudSync() {
         return false;
       }
 
-      if (!user) {
+      if (!user && !pairedDeviceToken) {
         if (!silent) {
-          showToast('برای همگام‌سازی با Supabase و Firebase ابتدا با حساب ابری وارد شوید.');
+          showToast('برای استفاده مستقل از Supabase، این دستگاه را با کد یک‌بارمصرف جفت کنید.');
         }
         return false;
       }
@@ -411,7 +415,7 @@ export function useDualCloudSync() {
       sbInFlightRef.current = true;
       setIsSupabaseSyncing(true);
       try {
-        const idToken = await user.getIdToken();
+        const idToken = user ? await user.getIdToken() : pairedDeviceToken!;
         const res = await pushSnapshotToSupabase({
           idToken,
           deviceId,
@@ -497,6 +501,7 @@ export function useDualCloudSync() {
       invoices.length,
       products.length,
       user,
+      pairedDeviceToken,
       supabaseStatus.configured,
       supabaseStatus.tableReady,
       refreshSupabaseStatus,
@@ -515,16 +520,16 @@ export function useDualCloudSync() {
   const pullFromSupabase = useCallback(
     async (backupId?: string, silent = false): Promise<boolean> => {
       if (sbInFlightRef.current) return false;
-      if (!isOnline || !user) {
+      if (!isOnline || (!user && !pairedDeviceToken)) {
         if (!silent) {
-          showToast('برای دریافت از Supabase اتصال اینترنت و ورود ابری لازم است.');
+          showToast('برای دریافت از Supabase اتصال اینترنت و جفت‌سازی این دستگاه لازم است.');
         }
         return false;
       }
       sbInFlightRef.current = true;
       setIsSupabaseSyncing(true);
       try {
-        const idToken = await user.getIdToken();
+        const idToken = user ? await user.getIdToken() : pairedDeviceToken!;
         const res = await pullSnapshotFromSupabase(idToken, backupId);
         if (!res.ok) {
           if (!silent) showToast(res.error || 'خطا در دریافت از Supabase');
@@ -567,20 +572,20 @@ export function useDualCloudSync() {
         setIsSupabaseSyncing(false);
       }
     },
-    [isOnline, user, importBackupJson, logActivity, showToast]
+    [isOnline, user, pairedDeviceToken, importBackupJson, logActivity, showToast]
   );
 
   const removeSupabaseBackup = useCallback(
     async (backupId: string) => {
-      if (!user || !isOnline) return;
-      const idToken = await user.getIdToken();
+      if ((!user && !pairedDeviceToken) || !isOnline) return;
+      const idToken = user ? await user.getIdToken() : pairedDeviceToken!;
       const res = await deleteSupabaseBackup(idToken, backupId);
       if (res.ok && res.backups) {
         setSupabaseBackups(res.backups);
         showToast('نسخه پشتیبان انتخاب‌شده از Supabase حذف شد.');
       }
     },
-    [user, isOnline, showToast]
+    [user, pairedDeviceToken, isOnline, showToast]
   );
 
   // Refs to prevent revision state updates from re-triggering effects
@@ -606,15 +611,16 @@ export function useDualCloudSync() {
 
   // 1. AUTO-BOOTSTRAP FOR SUPABASE (works automatically upon login/connect just like Firebase!)
   useEffect(() => {
-    if (!user || !isOnline || !supabaseStatus.configured || !supabaseStatus.tableReady) {
-      if (!user) {
+    if ((!user && !pairedDeviceToken) || !isOnline || !supabaseStatus.configured || !supabaseStatus.tableReady) {
+      if (!user && !pairedDeviceToken) {
         sbBootstrappedUidRef.current = null;
         setSupabaseBackups([]);
       }
       return;
     }
-    if (sbBootstrappedUidRef.current === user.uid) return;
-    sbBootstrappedUidRef.current = user.uid;
+    const bootstrapKey = user?.uid || 'paired-device';
+    if (sbBootstrappedUidRef.current === bootstrapKey) return;
+    sbBootstrappedUidRef.current = bootstrapKey;
 
     let cancelled = false;
     void (async () => {
@@ -643,7 +649,7 @@ export function useDualCloudSync() {
     return () => {
       cancelled = true;
     };
-  }, [user, isOnline, supabaseStatus.configured, supabaseStatus.tableReady, deviceId, refreshSupabaseBackups]);
+  }, [user, pairedDeviceToken, isOnline, supabaseStatus.configured, supabaseStatus.tableReady, deviceId, refreshSupabaseBackups]);
 
   // 2. AUTO-BOOTSTRAP FOR FIREBASE 3-VERSION ROLLING BACKUPS
   useEffect(() => {
@@ -671,7 +677,7 @@ export function useDualCloudSync() {
 
   // 3. AUTOMATIC BACKGROUND POLL + WINDOW FOCUS SYNC FOR SUPABASE (real-time-like multi-device sync)
   useEffect(() => {
-    if (!user || !isOnline || !supabaseStatus.configured || !supabaseStatus.tableReady) return;
+    if ((!user && !pairedDeviceToken) || !isOnline || !supabaseStatus.configured || !supabaseStatus.tableReady) return;
 
     const checkRemoteSupabase = async () => {
       if (document.visibilityState !== 'visible' || sbInFlightRef.current) return;
@@ -701,7 +707,7 @@ export function useDualCloudSync() {
       window.clearInterval(interval);
       window.removeEventListener('focus', onFocus);
     };
-  }, [user, isOnline, supabaseStatus.configured, supabaseStatus.tableReady, deviceId, refreshSupabaseBackups]);
+  }, [user, pairedDeviceToken, isOnline, supabaseStatus.configured, supabaseStatus.tableReady, deviceId, refreshSupabaseBackups]);
 
   // 4. OFFLINE-FIRST MUTATION OBSERVER: automatically syncs BOTH Supabase & Firebase rolling backups on any change
   const didMountRef = useRef(false);
@@ -729,7 +735,7 @@ export function useDualCloudSync() {
 
     const timers: number[] = [];
 
-    if (user && supabaseStatus.configured && supabaseStatus.tableReady) {
+    if ((user || pairedDeviceToken) && supabaseStatus.configured && supabaseStatus.tableReady) {
       timers.push(
         window.setTimeout(() => {
           void syncSupabaseNowRef.current(true);
@@ -751,6 +757,7 @@ export function useDualCloudSync() {
   }, [
     isOnline,
     user,
+    pairedDeviceToken,
     supabaseStatus.configured,
     supabaseStatus.tableReady,
     profile,
@@ -776,7 +783,7 @@ export function useDualCloudSync() {
   useEffect(() => {
     const justReconnected = !prevOnlineRef.current && isOnline;
     prevOnlineRef.current = isOnline;
-    if (justReconnected && user) {
+    if (justReconnected && (user || pairedDeviceToken)) {
       void refreshSupabaseStatus().then((st) => {
         if (st?.configured && st.tableReady && loadOfflineOutbox().length > 0) {
           void syncSupabaseNowRef.current(false);
@@ -784,7 +791,32 @@ export function useDualCloudSync() {
       });
       void pushToFirebaseNowRef.current(true);
     }
-  }, [isOnline, user, refreshSupabaseStatus]);
+  }, [isOnline, user, pairedDeviceToken, refreshSupabaseStatus]);
+
+  const generateSupabasePairCode = useCallback(async () => {
+    if (!user) return {ok:false as const,error:'برای ساخت کد، دستگاه اصلی باید با گوگل وارد شده باشد.'};
+    const token = await user.getIdToken();
+    return createSupabasePairCode(token, deviceId);
+  }, [user, deviceId]);
+
+  const pairThisDevice = useCallback(async (code: string) => {
+    const result = await redeemSupabasePairCode(code, deviceId, deviceLabel);
+    if (result.ok) {
+      setPairedDeviceToken(result.deviceToken || null);
+      sbBootstrappedUidRef.current = null;
+      await refreshSupabaseStatus();
+      showToast('این دستگاه با موفقیت به فضای مستقل Supabase متصل شد.');
+    }
+    return result;
+  }, [deviceId, deviceLabel, refreshSupabaseStatus, showToast]);
+
+  const disconnectPairedDevice = useCallback(() => {
+    try { localStorage.removeItem('holoo_apex_supabase_device_token_v1'); } catch { /* ignore */ }
+    setPairedDeviceToken(null);
+    sbBootstrappedUidRef.current = null;
+    setSupabaseBackups([]);
+    showToast('اتصال مستقل Supabase از این دستگاه قطع شد.');
+  }, [showToast]);
 
   return {
     // Supabase
@@ -802,6 +834,10 @@ export function useDualCloudSync() {
     pullFromSupabase,
     refreshSupabaseStatus,
     removeSupabaseBackup,
+    pairedDevice: Boolean(pairedDeviceToken),
+    generateSupabasePairCode,
+    pairThisDevice,
+    disconnectPairedDevice,
 
     // Firebase (3-version rolling backup + symmetrical push/pull)
     firebaseBackups,
