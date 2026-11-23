@@ -1014,6 +1014,49 @@ ${compactAccounts}`;
     }
   }
 
+  // Issue a separate persistent Supabase device credential while Firebase is signed in.
+  // This lets Supabase continue after Firebase is later signed out or temporarily unavailable.
+  app.post('/api/supabase/device-token', async (req: Request, res: Response) => {
+    const cfg = getValidatedSupabaseConfig();
+    if (!cfg) {
+      res.status(503).json({ error: 'Supabase در تنظیمات سرور پیکربندی نشده است.' });
+      return;
+    }
+    const owner = await verifyFirebaseBearerToken(req);
+    if (!owner || !/^[a-zA-Z0-9_-]{4,180}$/.test(owner.uid)) {
+      res.status(401).json({ error: 'ورود گوگل برای ثبت اولیه این دستگاه لازم است.' });
+      return;
+    }
+    const body = (req.body || {}) as { deviceId?: unknown; deviceLabel?: unknown };
+    const deviceId = String(body.deviceId || '').slice(0, 128);
+    const deviceLabel = String(body.deviceLabel || 'دستگاه کاری').slice(0, 80);
+    if (deviceId.length < 8) {
+      res.status(400).json({ error: 'شناسه دستگاه معتبر نیست.' });
+      return;
+    }
+    try {
+      const token = randomDeviceToken();
+      const tokenHash = await sha256Hex(token);
+      await fetch(`${cfg.baseUrl}/rest/v1/holoo_apex_device_tokens?owner_id=eq.${encodeURIComponent(owner.uid)}&device_id=eq.${encodeURIComponent(deviceId)}&revoked_at=is.null`, {
+        method: 'PATCH',
+        headers: buildSupabaseHeaders(cfg, { Prefer: 'return=minimal' }),
+        body: JSON.stringify({ revoked_at: new Date().toISOString() }),
+      });
+      const saved = await fetch(`${cfg.baseUrl}/rest/v1/holoo_apex_device_tokens`, {
+        method: 'POST',
+        headers: buildSupabaseHeaders(cfg, { Prefer: 'return=minimal' }),
+        body: JSON.stringify({ token_hash: tokenHash, owner_id: owner.uid, device_id: deviceId, device_label: deviceLabel }),
+      });
+      if (!saved.ok) {
+        res.status(502).json({ error: 'ثبت مجوز مستقل دستگاه ناموفق بود.' });
+        return;
+      }
+      res.json({ ok: true, deviceToken: token });
+    } catch {
+      res.status(502).json({ error: 'ارتباط با Supabase برقرار نشد.' });
+    }
+  });
+
   // A Firebase-authenticated owner creates a short-lived, single-use pairing code.
   app.post('/api/supabase/pair-code', async (req: Request, res: Response) => {
     const cfg = getValidatedSupabaseConfig();
