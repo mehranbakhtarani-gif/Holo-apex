@@ -404,6 +404,15 @@ export async function createApp() {
   // ---------------- HOLOO APEX 9.6 OPENAI FINANCIAL INTELLIGENCE ----------------
   const SMART_MODEL = String(process.env.OPENAI_MODEL || 'gpt-6.1-sol').trim();
 
+  app.get('/api/ai/status', (_req: Request, res: Response) => {
+    res.json({
+      provider: 'openai',
+      configured: Boolean(String(process.env.OPENAI_API_KEY || '').trim()),
+      model: SMART_MODEL,
+      imageModel: 'gpt-image-2',
+    });
+  });
+
   class OpenAiRequestError extends Error {
     status: number;
     constructor(message: string, status: number) {
