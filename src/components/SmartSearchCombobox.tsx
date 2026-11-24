@@ -196,6 +196,7 @@ export const SmartSearchCombobox: React.FC<SmartSearchComboboxProps> = ({
             setOpen(true);
           }}
           onKeyDown={handleKeyDown}
+          aria-label={placeholder}
           placeholder={
             mode === 'picker' && selectedOption
               ? selectedOption.code
