@@ -61,6 +61,7 @@ import { WarehouseCrmOpsView } from './components/WarehouseCrmOpsView';
 import { SmartCopilotDrawer } from './components/SmartCopilotDrawer';
 import { SystemHealthDrawer } from './components/SystemHealthDrawer';
 import { OfflineIndicator } from './components/PWAInstallButton';
+import { ResponsiveTableEnhancer } from './components/ResponsiveTableEnhancer';
 import { useOnlineStatus } from './hooks/usePWAInstall';
 import { useDualCloudSync } from './hooks/useDualCloudSync';
 import {
@@ -95,7 +96,7 @@ const HOLOO_MENU_TREE: MenuGroup[] = [
     id: 'dashboard',
     label: 'داشبورد مدیریت مالی',
     icon: LayoutDashboard,
-    iconAccent: 'text-teal-600 dark:text-teal-400',
+    iconAccent: 'text-blue-600 dark:text-blue-400',
     shortcut: 'F10',
     directModule: 'dashboard',
   },
@@ -151,7 +152,7 @@ const HOLOO_MENU_TREE: MenuGroup[] = [
     id: 'commercial',
     label: 'بازرگانی واردات، باسکول و رنگرزی',
     icon: Ship,
-    iconAccent: 'text-cyan-600 dark:text-cyan-400',
+    iconAccent: 'text-indigo-600 dark:text-indigo-400',
     items: [
       { key: 'comm-imports', label: 'پرونده واردات نخ و قیمت تمام‌شده', module: 'commercial', intent: 'imports' },
       { key: 'comm-orders', label: 'سفارش فروش، حواله باسکول و بارکد', module: 'commercial', intent: 'orders' },
@@ -198,7 +199,7 @@ const HOLOO_MENU_TREE: MenuGroup[] = [
     id: 'corporate',
     label: 'امور شرکتی (F8)',
     icon: Briefcase,
-    iconAccent: 'text-violet-600 dark:text-violet-400',
+    iconAccent: 'text-indigo-600 dark:text-indigo-400',
     items: [
       { key: 'corp-payroll', label: 'حقوق و دستمزد و فیش حقوقی', module: 'corporate', intent: 'payroll' },
       { key: 'corp-assets', label: 'اموال، دارایی ثابت و استهلاک', module: 'corporate', intent: 'assets' },
@@ -209,7 +210,7 @@ const HOLOO_MENU_TREE: MenuGroup[] = [
     id: 'reports',
     label: 'گزارش‌ها و دفاتر قانونی (F9)',
     icon: BarChart3,
-    iconAccent: 'text-fuchsia-600 dark:text-fuchsia-400',
+    iconAccent: 'text-slate-600 dark:text-slate-400',
     items: [
       { key: 'rep-trial', label: 'تراز آزمایشی ۲/۴/۶/۸ ستونی', module: 'reports', intent: 'trial' },
       { key: 'rep-moroor', label: 'مرور حساب‌ها (دریل‌داون)', module: 'reports', intent: 'moroor' },
@@ -230,7 +231,7 @@ const HOLOO_MENU_TREE: MenuGroup[] = [
     id: 'tools',
     label: 'ابزارها، کاربران و تنظیمات',
     icon: Settings,
-    iconAccent: 'text-rose-600 dark:text-rose-400',
+    iconAccent: 'text-slate-600 dark:text-slate-400',
     items: [
       { key: 'tool-local-backup', label: 'پشتیبان داخلی و همزمانی ۳ دستگاه', module: 'settings', intent: 'local-backup' },
       { key: 'tool-rbac', label: 'کاربران و سطوح دسترسی (RBAC)', module: 'settings', intent: 'rbac' },
@@ -523,7 +524,7 @@ export default function App() {
               onClick={() => navigate(group.directModule!)}
               className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
                 isActive
-                  ? 'bg-teal-50 dark:bg-teal-950/50 text-teal-900 dark:text-teal-200 font-semibold'
+                  ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-900 dark:text-blue-200 font-semibold'
                   : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/60'
               }`}
             >
@@ -552,7 +553,7 @@ export default function App() {
               onClick={() => toggleGroup(group.id)}
               className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
                 groupHasActive
-                  ? 'text-teal-900 dark:text-teal-200 bg-slate-100/80 dark:bg-slate-800/60'
+                  ? 'text-blue-900 dark:text-blue-200 bg-slate-100/80 dark:bg-slate-800/60'
                   : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100/70 dark:hover:bg-slate-800/50'
               }`}
             >
@@ -584,7 +585,7 @@ export default function App() {
                       onClick={() => navigate(sub.module, sub.intent, sub.key)}
                       className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md text-[11.5px] transition-colors text-right ${
                         isSubActive
-                          ? 'bg-teal-50 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 font-semibold'
+                          ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 font-semibold'
                           : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/70 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
@@ -635,10 +636,11 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion="user">
-    <div className="min-h-screen flex bg-slate-50 dark:bg-slate-950 dark:bg-[radial-gradient(ellipse_at_top_right,rgba(15,118,110,0.14),transparent_48%),radial-gradient(ellipse_at_bottom_left,rgba(14,116,144,0.09),transparent_46%)] text-slate-900 dark:text-slate-100">
+    <div className="min-h-screen flex bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+      <ResponsiveTableEnhancer />
       <a
         href="#main-accounting-viewport"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:right-2 focus:z-[60] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-teal-700 focus:text-white focus:text-xs focus:font-semibold"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:right-2 focus:z-[60] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-blue-700 focus:text-white focus:text-xs focus:font-semibold"
       >
         پرش به محتوای اصلی
       </a>
@@ -648,7 +650,7 @@ export default function App() {
           <span className="text-base font-extrabold tracking-tight text-slate-900 dark:text-white whitespace-nowrap">
             هلو شرکتی Apex 9.6
           </span>
-          <span className="font-code text-[11px] font-semibold text-teal-700 dark:text-teal-400">
+          <span className="font-code text-[11px] font-semibold text-blue-700 dark:text-blue-400">
             سال {toPersianDigits(profile.fiscalYear)}
           </span>
         </div>
@@ -668,7 +670,7 @@ export default function App() {
                 ? 'border-rose-300 dark:border-rose-800 bg-rose-50/70 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300'
                 : systemHealthHasWarning
                   ? 'border-amber-300/80 dark:border-amber-800/80 bg-amber-50/60 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300'
-                  : 'border-slate-200 dark:border-white/10 dark:bg-white/[0.03] text-teal-800 dark:text-teal-300 hover:bg-teal-50/70 dark:hover:bg-white/[0.08]'
+                  : 'border-slate-200 dark:border-white/10 dark:bg-white/[0.03] text-blue-800 dark:text-blue-300 hover:bg-blue-50/70 dark:hover:bg-white/[0.08]'
             }`}
           >
             <span className="inline-flex items-center gap-1.5">
@@ -713,7 +715,7 @@ export default function App() {
                   className="w-8 h-8 rounded-lg object-cover shrink-0 border border-slate-200 dark:border-slate-700"
                 />
               ) : (
-                <div className="w-8 h-8 rounded-lg bg-teal-700 text-white flex items-center justify-center text-xs font-bold shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-blue-700 text-white flex items-center justify-center text-xs font-bold shrink-0">
                   {activeOperator.fullName.slice(0, 1)}
                 </div>
               )}
@@ -721,7 +723,7 @@ export default function App() {
                 <div className="text-xs font-semibold text-slate-900 dark:text-white truncate">
                   {activeOperator.fullName}
                 </div>
-                <div className="text-[10.5px] text-teal-700 dark:text-teal-400 truncate">
+                <div className="text-[10.5px] text-blue-700 dark:text-blue-400 truncate">
                   {RBAC_ROLE_LABELS[activeOperator.role].split('(')[0].trim()} ·{' '}
                   {isSyncing ? 'در حال همگام‌سازی' : isCloudMode ? 'ابری' : 'محلی'}
                 </div>
@@ -732,7 +734,7 @@ export default function App() {
                 onClick={loginWithGoogle}
                 disabled={isSigningIn}
                 title="ورود با حساب گوگل برای ذخیره ابری"
-                className="p-1.5 rounded-lg text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/40 disabled:opacity-50 shrink-0"
+                className="p-1.5 rounded-lg text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 disabled:opacity-50 shrink-0"
               >
                 <LogIn className="w-4 h-4" />
               </button>
@@ -940,7 +942,7 @@ export default function App() {
                           setShowChequePopover(false);
                           navigate('treasury', 'cheques', 'tr-cheques');
                         }}
-                        className="font-semibold text-teal-700 dark:text-teal-400 hover:underline"
+                        className="font-semibold text-blue-700 dark:text-blue-400 hover:underline"
                       >
                         مدیریت چک‌ها
                       </button>
@@ -1056,7 +1058,7 @@ export default function App() {
                     : isCloudMode && sbReady
                       ? 'border-emerald-300 dark:border-emerald-800 bg-emerald-50/80 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 hover:bg-emerald-100/80 dark:hover:bg-emerald-950/60'
                       : isCloudMode
-                        ? 'border-teal-300 dark:border-teal-800 bg-teal-50/80 dark:bg-teal-950/40 text-teal-900 dark:text-teal-200 hover:bg-teal-100/80 dark:hover:bg-teal-950/60'
+                        ? 'border-blue-300 dark:border-blue-800 bg-blue-50/80 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200 hover:bg-blue-100/80 dark:hover:bg-blue-950/60'
                         : 'border-slate-300 dark:border-white/15 bg-white dark:bg-white/[0.04] text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-white/[0.08]';
 
                 return (
@@ -1146,7 +1148,7 @@ export default function App() {
                       <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/50 space-y-2">
                         <div className="flex items-center justify-between gap-2">
                           <span className="inline-flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-100">
-                            <Cloud className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                            <Cloud className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                             <span>Firebase Firestore</span>
                             <span className="text-[10px] font-normal text-slate-500">(خودکار · {toPersianDigits(maxCloudBackups)} نسخه)</span>
                           </span>
@@ -1179,7 +1181,7 @@ export default function App() {
                               void loginWithGoogle();
                             }}
                             disabled={isSigningIn}
-                            className="w-full inline-flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-teal-700 hover:bg-teal-800 disabled:opacity-70 text-white text-[11px] font-semibold transition-colors"
+                            className="w-full inline-flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-blue-700 hover:bg-blue-800 disabled:opacity-70 text-white text-[11px] font-semibold transition-colors"
                           >
                             {isSigningIn ? (
                               <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -1200,7 +1202,7 @@ export default function App() {
                                 <strong className="font-code text-slate-800 dark:text-slate-200">
                                   #{toPersianDigits(lastFirebaseRevision)}
                                 </strong>
-                                <span className="mr-1.5 text-[10px] text-teal-700 dark:text-teal-400 font-code">
+                                <span className="mr-1.5 text-[10px] text-blue-700 dark:text-blue-400 font-code">
                                   ({toPersianDigits(firebaseBackups.length)}/{toPersianDigits(maxCloudBackups)} نسخه)
                                 </span>
                               </span>
@@ -1219,7 +1221,7 @@ export default function App() {
                                 disabled={isFirebaseBackingUp || !isOnline}
                                 className="flex-1 inline-flex items-center justify-center gap-1 py-1.5 px-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-[11px] font-semibold text-slate-800 dark:text-slate-100 disabled:opacity-50 transition-colors"
                               >
-                                <ArrowUpFromLine className="w-3 h-3 text-teal-600 dark:text-teal-400" />
+                                <ArrowUpFromLine className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                                 <span>ارسال به Firebase</span>
                               </button>
                               <button
@@ -1258,7 +1260,7 @@ export default function App() {
                                       type="button"
                                       onClick={() => void pullFromFirebaseNow(bak.id)}
                                       disabled={isFirebaseBackingUp}
-                                      className="text-teal-700 dark:text-teal-400 font-semibold hover:underline shrink-0"
+                                      className="text-blue-700 dark:text-blue-400 font-semibold hover:underline shrink-0"
                                     >
                                       بازیابی
                                     </button>
@@ -1269,10 +1271,10 @@ export default function App() {
 
                             <div className="flex items-center justify-between text-[10.5px] text-slate-500 dark:text-slate-400 pt-0.5 border-t border-slate-200/60 dark:border-slate-800">
                               <span className="inline-flex items-center gap-1">
-                                <Users className="w-3 h-3 text-teal-600 dark:text-teal-400" />
+                                <Users className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                                 <span>دستگاه‌های آنلاین:</span>
                               </span>
-                              <span className="font-code font-bold text-teal-700 dark:text-teal-400">
+                              <span className="font-code font-bold text-blue-700 dark:text-blue-400">
                                 {toPersianDigits(Math.max(1, onlineDevices.length))} دستگاه
                               </span>
                             </div>
@@ -1415,7 +1417,7 @@ export default function App() {
                       <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/40 space-y-2">
                         <div className="flex items-center justify-between gap-2">
                           <span className="inline-flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-100">
-                            <GitCompareArrows className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                            <GitCompareArrows className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                             <span>سیاست حل تداخل ویرایش همزمان</span>
                           </span>
                           <span className="font-code text-[10.5px] font-semibold text-slate-500 dark:text-slate-400">
@@ -1429,7 +1431,7 @@ export default function App() {
                             onClick={() => setConflictPolicy('last_write_wins')}
                             className={`px-2 py-1.5 rounded-md border text-[11px] font-semibold transition-colors text-center ${
                               conflictPolicy === 'last_write_wins'
-                                ? 'border-teal-600 bg-teal-50 dark:bg-teal-950/60 text-teal-900 dark:text-teal-200'
+                                ? 'border-blue-600 bg-blue-50 dark:bg-blue-950/60 text-blue-900 dark:text-blue-200'
                                 : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60'
                             }`}
                           >
@@ -1440,7 +1442,7 @@ export default function App() {
                             onClick={() => setConflictPolicy('first_write_wins')}
                             className={`px-2 py-1.5 rounded-md border text-[11px] font-semibold transition-colors text-center ${
                               conflictPolicy === 'first_write_wins'
-                                ? 'border-teal-600 bg-teal-50 dark:bg-teal-950/60 text-teal-900 dark:text-teal-200'
+                                ? 'border-blue-600 bg-blue-50 dark:bg-blue-950/60 text-blue-900 dark:text-blue-200'
                                 : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60'
                             }`}
                           >
@@ -1477,7 +1479,7 @@ export default function App() {
                           void triggerLocalBackupNow(false);
                           setShowCloudPopover(false);
                         }}
-                        className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-teal-50 dark:bg-teal-950/50 text-teal-800 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-950/80 font-semibold transition-colors"
+                        className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-950/80 font-semibold transition-colors"
                       >
                         <HardDrive className="w-3.5 h-3.5" />
                         <span>ذخیره پشتیبان فوری روی حافظه دستگاه</span>
@@ -1492,7 +1494,7 @@ export default function App() {
                           setShowCloudPopover(false);
                           navigate('settings', 'local-backup', 'tool-local-backup');
                         }}
-                        className="font-semibold text-teal-700 dark:text-teal-400 hover:underline"
+                        className="font-semibold text-blue-700 dark:text-blue-400 hover:underline"
                       >
                         مدیریت پشتیبان‌ها و RBAC
                       </button>
@@ -1640,14 +1642,14 @@ export default function App() {
         aria-label="دسترسی سریع موبایل"
         className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white/95 dark:bg-slate-900/90 backdrop-blur-lg border-t border-slate-200 dark:border-white/10 pb-safe no-print"
       >
-        <div className="grid grid-cols-5 h-13">
+        <div className="grid grid-cols-5 min-h-[60px] gap-1 px-1 py-1">
           <button
             type="button"
             onClick={() => navigate('dashboard', undefined, 'dashboard')}
             aria-current={activeModule === 'dashboard' ? 'page' : undefined}
-            className={`flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${
+            className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-lg text-[10px] font-semibold transition-colors ${
               activeModule === 'dashboard'
-                ? 'text-teal-700 dark:text-teal-400'
+                ? 'text-blue-700 dark:text-blue-400'
                 : 'text-slate-500 dark:text-slate-400'
             }`}
           >
@@ -1660,7 +1662,7 @@ export default function App() {
             aria-current={activeModule === 'vouchers' ? 'page' : undefined}
             className={`flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${
               activeModule === 'vouchers'
-                ? 'text-teal-700 dark:text-teal-400'
+                ? 'text-blue-700 dark:text-blue-400'
                 : 'text-slate-500 dark:text-slate-400'
             }`}
           >
@@ -1673,7 +1675,7 @@ export default function App() {
             aria-current={activeModule === 'invoices' ? 'page' : undefined}
             className={`flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${
               activeModule === 'invoices'
-                ? 'text-teal-700 dark:text-teal-400'
+                ? 'text-blue-700 dark:text-blue-400'
                 : 'text-slate-500 dark:text-slate-400'
             }`}
           >
@@ -1686,7 +1688,7 @@ export default function App() {
             aria-current={activeModule === 'treasury' ? 'page' : undefined}
             className={`flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${
               activeModule === 'treasury'
-                ? 'text-teal-700 dark:text-teal-400'
+                ? 'text-blue-700 dark:text-blue-400'
                 : 'text-slate-500 dark:text-slate-400'
             }`}
           >
@@ -1696,7 +1698,7 @@ export default function App() {
           <button
             type="button"
             onClick={() => setMobileMenuOpen(true)}
-            className="flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+            className="flex min-h-12 flex-col items-center justify-center gap-1 rounded-lg text-[10px] font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
           >
             <Menu className="w-4 h-4" />
             <span>منوها</span>
@@ -1715,7 +1717,7 @@ export default function App() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.96 }}
             transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed bottom-16 lg:bottom-5 left-1/2 -translate-x-1/2 z-50 max-w-[92vw] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900/95 dark:bg-teal-800/95 backdrop-blur-md border border-white/10 text-white text-xs font-medium shadow-xl no-print"
+            className="fixed bottom-16 lg:bottom-5 left-1/2 -translate-x-1/2 z-50 max-w-[92vw] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900/95 dark:bg-blue-800/95 backdrop-blur-md border border-white/10 text-white text-xs font-medium shadow-xl no-print"
           >
             <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
             <span className="leading-relaxed">{toast}</span>
