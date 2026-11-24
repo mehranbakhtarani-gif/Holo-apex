@@ -55,14 +55,17 @@
     transition: transform 110ms var(--ease-smooth);
   }
 
-  button, a, input, select, textarea {
+  :is(button, input, select, textarea) {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  a, [role="button"] {
     touch-action: manipulation;
   }
 }
 
-.tabular-nums {
-  font-variant-numeric: tabular-nums;
-}
+.tabular-nums { font-variant-numeric: tabular-nums; }
 
 .font-code {
   font-family: var(--font-mono);
@@ -74,13 +77,8 @@
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.apex-tx-enter {
-  animation: apex-tx-flash 180ms var(--ease-smooth) both;
-}
-
-.pb-safe {
-  padding-bottom: max(0.35rem, env(safe-area-inset-bottom));
-}
+.apex-tx-enter { animation: apex-tx-flash 180ms var(--ease-smooth) both; }
+.pb-safe { padding-bottom: max(0.35rem, env(safe-area-inset-bottom)); }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -110,5 +108,5 @@
 .bg-teal-50 { background-color: #EFF6FF !important; }
 .border-teal-600 { border-color: #1D4ED8 !important; }
 .ring-teal-600 { --tw-ring-color: #1D4ED8 !important; }
-.hover\\:bg-teal-700:hover { background-color: #1E40AF !important; }
-.hover\\:text-teal-700:hover { color: #1E40AF !important; }
+.hover\:bg-teal-700:hover { background-color: #1E40AF !important; }
+.hover\:text-teal-700:hover { color: #1E40AF !important; }
