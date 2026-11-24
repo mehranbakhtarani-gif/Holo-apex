@@ -42,7 +42,7 @@ function enhanceTable(table: HTMLTableElement): void {
       );
       if (cells.length === 0 || labels.length === 0) return;
 
-      if (cells.some((cell) => cell.colSpan > 1) || (labels.length > 0 && cells.length !== labels.length)) {
+      if (cells.some((cell) => cell.colSpan > 1)) {
         row.classList.add('apex-table-summary-row');
         return;
       }
