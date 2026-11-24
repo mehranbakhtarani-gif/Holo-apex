@@ -116,3 +116,26 @@ Preserve the existing modules: dashboard, invoices, vouchers, audit, accounts, p
 - [ ] Financial save operations are idempotent and auditable.
 - [ ] PWA install, offline shell and service-worker update are tested.
 - [ ] Existing accounting data and workflows remain unchanged.
+
+## 12. UI/UX Pro Max implementation contract
+
+### Design primitives
+- Spacing tokens follow a strict 4px scale: 4, 8, 12, 16, 20, 24, 32, 40 and 48px. Use 8px as the default separation between adjacent controls and compact content groups.
+- Radius tokens: 8px for badges and compact controls, 12px for inputs and buttons, 16px for cards and dialogs, and 20px only for large dashboard panels.
+- Elevation: no shadow for flat table rows; cards use a restrained 0 1px 2px rgba(15,23,42,.06) base shadow; elevated menus/dialogs use 0 12px 32px rgba(15,23,42,.12). Avoid colored glow and decorative gradients.
+- Primary and indigo text colors must meet WCAG AA for normal text. Semantic text uses the darker text tokens from section 2. AAA contrast (7:1 normal text, 4.5:1 large text) is preferred for dense financial labels where practical; never claim AAA for a combination that has not been measured.
+
+### RTL and formatting
+- Root document and application shell must remain `lang="fa"` and `dir="rtl"`. Use CSS logical properties (margin-inline, padding-inline, inset-inline, border-inline) in new styles rather than left/right-specific properties.
+- Use the existing centralized Persian digit, date and currency formatters. Never hand-format financial amounts inside individual components or change stored numeric values for display.
+- Mixed Latin identifiers, account codes and serial numbers must remain legible and directionally isolated where needed (for example with `dir="ltr"` on the identifier only).
+
+### Responsive and interaction contracts
+- Every interactive control, including icon buttons and links that function as controls, has a minimum 44×44px hit area. Adjacent controls maintain at least 8px separation; decorative icons do not become separate hit targets.
+- Global document overflow is prohibited. A genuinely wide table may scroll only inside a clearly bounded, labelled table region; priority accounting lists must reflow into compact cards below 768px with all decision-critical fields retained.
+- Interactive state changes use 150–300ms transitions. Focus-visible rings must be high contrast. Reduced-motion preferences override nonessential animation.
+- Asynchronous lists and dashboards use content-shaped skeletons. Small inline progress indicators are permitted for a single action, but not as a blocking page state.
+- Loading, local persistence, cloud synchronization and conflict states must be represented separately and truthfully.
+
+### Release evidence
+The checklist in section 11 is a release gate, not an assumption. Mark an item complete only after checking the relevant module and viewport. A successful production build does not prove responsive, contrast, keyboard or screen-reader compliance.
