@@ -239,7 +239,8 @@
   .apex-mobile-card-table tr,
   .apex-mobile-card-table td {
     display: block;
-    width: 100%;
+    width: auto;
+    min-width: 0;
   }
 
   .apex-mobile-card-table thead {
