@@ -6,6 +6,7 @@ import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 const deploymentBase = process.env.GITHUB_PAGES === 'true' ? '/Holo-apex/' : '/';
+const asset = (name: string) => `${deploymentBase}${name}`;
 
 export default defineConfig(() => ({
   base: deploymentBase,
@@ -29,14 +30,14 @@ export default defineConfig(() => ({
         start_url: deploymentBase,
         scope: deploymentBase,
         icons: [
-          { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-          { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-          { src: '/pwa-maskable-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: asset('pwa-192x192.png'), sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: asset('pwa-512x512.png'), sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: asset('pwa-maskable-512x512.png'), sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
         shortcuts: [
-          { name: 'فاکتور فروش (F2)', short_name: 'فروش', url: '/?view=invoices&action=new-sale', icons: [{ src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' }] },
-          { name: 'ثبت سند حسابداری (F3)', short_name: 'سند جدید', url: '/?view=vouchers&action=new-voucher', icons: [{ src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' }] },
-          { name: 'خزانه‌داری و چک (F7)', short_name: 'چک‌ها', url: '/?view=treasury', icons: [{ src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' }] },
+          { name: 'فاکتور فروش (F2)', short_name: 'فروش', url: `${deploymentBase}?view=invoices&action=new-sale`, icons: [{ src: asset('pwa-192x192.png'), sizes: '192x192', type: 'image/png' }] },
+          { name: 'ثبت سند حسابداری (F3)', short_name: 'سند جدید', url: `${deploymentBase}?view=vouchers&action=new-voucher`, icons: [{ src: asset('pwa-192x192.png'), sizes: '192x192', type: 'image/png' }] },
+          { name: 'خزانه‌داری و چک (F7)', short_name: 'چک‌ها', url: `${deploymentBase}?view=treasury`, icons: [{ src: asset('pwa-192x192.png'), sizes: '192x192', type: 'image/png' }] },
         ],
       },
       workbox: {
@@ -48,45 +49,26 @@ export default defineConfig(() => ({
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [/^\/__\/auth/, /^\/api\//],
         runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/(firestore|identitytoolkit|securetoken)\.googleapis\.com\/.*/i,
-            handler: 'NetworkOnly',
-          },
+          { urlPattern: /^https:\/\/(firestore|identitytoolkit|securetoken)\.googleapis\.com\/.*/i, handler: 'NetworkOnly' },
           {
             urlPattern: /\/api\/fx\/rates/i,
             handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'apex-fx-rates-cache',
-              expiration: { maxEntries: 8, maxAgeSeconds: 60 * 60 * 24 * 7 },
-              cacheableResponse: { statuses: [0, 200] },
-            },
+            options: { cacheName: 'apex-fx-rates-cache', expiration: { maxEntries: 8, maxAgeSeconds: 60 * 60 * 24 * 7 }, cacheableResponse: { statuses: [0, 200] } },
           },
           {
             urlPattern: /\/src\/assets\/.*\.(?:png|jpg|jpeg|svg|webp)$/i,
             handler: 'CacheFirst',
-            options: {
-              cacheName: 'apex-local-assets-cache',
-              expiration: { maxEntries: 40, maxAgeSeconds: 60 * 60 * 24 * 90 },
-              cacheableResponse: { statuses: [0, 200] },
-            },
+            options: { cacheName: 'apex-local-assets-cache', expiration: { maxEntries: 40, maxAgeSeconds: 60 * 60 * 24 * 90 }, cacheableResponse: { statuses: [0, 200] } },
           },
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: 'CacheFirst',
-            options: {
-              cacheName: 'google-fonts-cache',
-              expiration: { maxEntries: 15, maxAgeSeconds: 60 * 60 * 24 * 365 },
-              cacheableResponse: { statuses: [0, 200] },
-            },
+            options: { cacheName: 'google-fonts-cache', expiration: { maxEntries: 15, maxAgeSeconds: 60 * 60 * 24 * 365 }, cacheableResponse: { statuses: [0, 200] } },
           },
           {
             urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
             handler: 'CacheFirst',
-            options: {
-              cacheName: 'gstatic-fonts-cache',
-              expiration: { maxEntries: 15, maxAgeSeconds: 60 * 60 * 24 * 365 },
-              cacheableResponse: { statuses: [0, 200] },
-            },
+            options: { cacheName: 'gstatic-fonts-cache', expiration: { maxEntries: 15, maxAgeSeconds: 60 * 60 * 24 * 365 }, cacheableResponse: { statuses: [0, 200] } },
           },
         ],
       },
