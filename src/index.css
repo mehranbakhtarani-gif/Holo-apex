@@ -12,15 +12,25 @@
     font-family: var(--font-sans);
     scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
+    background: #F1F5F9;
   }
 
   body {
+    min-width: 320px;
+    max-width: 100%;
+    overflow-x: hidden;
     font-feature-settings: "tnum" on, "lnum" on;
   }
 
+  #root { min-height: 100dvh; width: 100%; max-width: 100%; overflow-x: clip; }
+
+  :is(button, input, select, textarea) { min-height: 44px; touch-action: manipulation; }
+  a, [role='button'] { touch-action: manipulation; }
+
   /* High-visibility accessible keyboard focus ring for rapid accounting data entry */
   :is(button, a, input, select, textarea, [tabindex]):focus-visible {
-    outline: 2px solid #0d9488;
+    outline: 2px solid #1D4ED8;
     outline-offset: 2px;
   }
 
@@ -107,3 +117,31 @@
     padding: 0 !important;
   }
 }
+
+
+/* Holo Apex Design System tokens */
+:root {
+  --apex-primary: #1D4ED8;
+  --apex-primary-soft: #EFF6FF;
+  --apex-secondary: #4F46E5;
+  --apex-success: #059669;
+  --apex-warning: #D97706;
+  --apex-danger: #DC2626;
+  --apex-info: #0891B2;
+  --apex-app-bg: #F1F5F9;
+  --apex-card: #FFFFFF;
+  --apex-border: #E2E8F0;
+  --apex-text: #0F172A;
+  --apex-muted: #475569;
+}
+
+/* Primary blue bridge for existing teal brand utilities. */
+.text-teal-600 { color: #1D4ED8 !important; }
+.text-teal-700 { color: #1E40AF !important; }
+.bg-teal-600 { background-color: #1D4ED8 !important; }
+.bg-teal-700 { background-color: #1E40AF !important; }
+.bg-teal-50 { background-color: #EFF6FF !important; }
+.border-teal-600 { border-color: #1D4ED8 !important; }
+.ring-teal-600 { --tw-ring-color: #1D4ED8 !important; }
+.hover\\:bg-teal-700:hover { background-color: #1E40AF !important; }
+.hover\\:text-teal-700:hover { color: #1E40AF !important; }
