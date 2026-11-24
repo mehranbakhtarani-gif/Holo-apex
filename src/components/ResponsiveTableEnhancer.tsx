@@ -31,15 +31,16 @@ function enhanceTable(table: HTMLTableElement): void {
     return;
   }
 
-  table.classList.add('apex-responsive-table', 'apex-financial-table');
   const labels = getHeaderLabels(table);
+  table.classList.add('apex-financial-table');
+  if (labels.length > 0) table.classList.add('apex-responsive-table');
 
   Array.from(table.tBodies).forEach((body) => {
     Array.from(body.rows).forEach((row) => {
       const cells = Array.from(row.cells).filter(
         (cell): cell is HTMLTableCellElement => cell.tagName.toLowerCase() === 'td'
       );
-      if (cells.length === 0) return;
+      if (cells.length === 0 || labels.length === 0) return;
 
       if (cells.some((cell) => cell.colSpan > 1) || (labels.length > 0 && cells.length !== labels.length)) {
         row.classList.add('apex-table-summary-row');
@@ -56,32 +57,14 @@ function enhanceTable(table: HTMLTableElement): void {
   const parent = table.parentElement;
   if (!parent) return;
 
-  if (parent.classList.contains('apex-table-scroll')) {
-    parent.setAttribute('role', 'region');
-    parent.setAttribute('tabindex', '0');
-    if (!parent.hasAttribute('aria-label')) {
-      parent.setAttribute('aria-label', table.caption?.textContent?.trim() || 'جدول اطلاعات');
-    }
-    return;
+  // Apply the scroll region to the existing React-owned parent; do not reparent
+  // React nodes imperatively, which can desynchronize the virtual DOM.
+  parent.classList.add('apex-table-scroll');
+  if (!parent.hasAttribute('role')) parent.setAttribute('role', 'region');
+  if (!parent.hasAttribute('tabindex')) parent.setAttribute('tabindex', '0');
+  if (!parent.hasAttribute('aria-label')) {
+    parent.setAttribute('aria-label', table.caption?.textContent?.trim() || 'جدول اطلاعات');
   }
-
-  if (parent.classList.contains('overflow-x-auto')) {
-    parent.classList.add('apex-table-scroll');
-    parent.setAttribute('role', 'region');
-    parent.setAttribute('tabindex', '0');
-    if (!parent.hasAttribute('aria-label')) {
-      parent.setAttribute('aria-label', table.caption?.textContent?.trim() || 'جدول اطلاعات');
-    }
-    return;
-  }
-
-  const wrapper = document.createElement('div');
-  wrapper.className = 'apex-table-scroll';
-  wrapper.setAttribute('role', 'region');
-  wrapper.setAttribute('tabindex', '0');
-  wrapper.setAttribute('aria-label', table.caption?.textContent?.trim() || 'جدول اطلاعات');
-  parent.insertBefore(wrapper, table);
-  wrapper.appendChild(table);
 }
 
 function enhanceControlGroups(root: ParentNode): void {
