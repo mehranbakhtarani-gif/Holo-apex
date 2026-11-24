@@ -2,7 +2,7 @@ name: Deploy Holo Apex to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, deploy/github-pages-pwa]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -22,31 +22,24 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-
       - name: Install dependencies
         run: bun install --frozen-lockfile
-
       - name: Build static site for GitHub Pages
         run: bun run build
         env:
           GITHUB_PAGES: 'true'
-
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
-
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist
-
   deploy:
     if: github.event_name != 'pull_request'
     environment:
