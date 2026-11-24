@@ -166,12 +166,12 @@
 }
 
 /* Hit-area contract: controls and semantic button/link controls are touch-sized. */
-:where(button, input, select, textarea, [role="button"], [role="tab"], summary) {
+:where(button, input, select, textarea, [role="button"], [role="tab"], a[role="button"], a.apex-action, summary) {
   min-height: 44px;
   touch-action: manipulation;
 }
 
-:where(button, [role="button"], [role="tab"]) {
+:where(button, [role="button"], [role="tab"], a[role="button"], a.apex-action) {
   min-width: 44px;
 }
 
@@ -574,3 +574,20 @@ label {
 :where(.rounded-2xl) { border-radius: var(--apex-radius-panel) !important; }
 :where(.shadow-sm) { box-shadow: var(--apex-shadow-card) !important; }
 :where(.shadow-md, .shadow-lg, .shadow-xl) { box-shadow: var(--apex-shadow-overlay) !important; }
+
+
+.dark {
+  --apex-card: #0F172A;
+  --apex-border: #334155;
+  --apex-muted: #94A3B8;
+  --apex-primary-soft: rgba(30, 58, 138, 0.28);
+}
+
+.dark .apex-skeleton {
+  background: linear-gradient(90deg, #334155 25%, #475569 50%, #334155 75%);
+  background-size: 200% 100%;
+}
+
+.dark .apex-responsive-table tbody tr:not(.apex-table-summary-row) {
+  color: #F1F5F9;
+}
