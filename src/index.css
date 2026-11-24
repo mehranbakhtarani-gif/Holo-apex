@@ -565,3 +565,12 @@ label {
     content: none !important;
   }
 }
+
+
+/* Consistent shape and elevation across the existing Tailwind-based UI. */
+:where(.rounded-md) { border-radius: var(--apex-radius-badge) !important; }
+:where(.rounded-lg) { border-radius: var(--apex-radius-control) !important; }
+:where(.rounded-xl) { border-radius: var(--apex-radius-card) !important; }
+:where(.rounded-2xl) { border-radius: var(--apex-radius-panel) !important; }
+:where(.shadow-sm) { box-shadow: var(--apex-shadow-card) !important; }
+:where(.shadow-md, .shadow-lg, .shadow-xl) { box-shadow: var(--apex-shadow-overlay) !important; }
