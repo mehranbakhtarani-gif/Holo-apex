@@ -6,28 +6,57 @@
     --font-sans: 'Vazirmatn', system-ui, -apple-system, sans-serif;
     --font-mono: 'IBM Plex Mono', 'Vazirmatn', ui-monospace, monospace;
     --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+    --apex-primary: #1D4ED8;
+    --apex-primary-soft: #EFF6FF;
+    --apex-secondary: #4F46E5;
+    --apex-success: #059669;
+    --apex-warning: #D97706;
+    --apex-danger: #DC2626;
+    --apex-info: #0891B2;
+    --apex-app-bg: #F1F5F9;
+    --apex-card: #FFFFFF;
+    --apex-border: #E2E8F0;
+    --apex-text: #0F172A;
+    --apex-muted: #475569;
   }
 
   html {
     font-family: var(--font-sans);
     scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
+    background: var(--apex-app-bg);
   }
 
   body {
+    margin: 0;
+    min-width: 320px;
+    max-width: 100%;
+    overflow-x: hidden;
     font-feature-settings: "tnum" on, "lnum" on;
+    background: var(--apex-app-bg);
+    color: var(--apex-text);
   }
 
-  /* High-visibility accessible keyboard focus ring for rapid accounting data entry */
+  #root {
+    min-height: 100dvh;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
   :is(button, a, input, select, textarea, [tabindex]):focus-visible {
-    outline: 2px solid #0d9488;
+    outline: 2px solid var(--apex-primary);
     outline-offset: 2px;
   }
 
-  /* Crisp tactile micro-interaction on buttons without layout shift */
   button:not(:disabled):active {
     transform: scale(0.985);
     transition: transform 110ms var(--ease-smooth);
+  }
+
+  button, a, input, select, textarea {
+    touch-action: manipulation;
   }
 }
 
@@ -41,49 +70,25 @@
 }
 
 @keyframes apex-tx-flash {
-  0% {
-    opacity: 0;
-    transform: translateY(6px) scale(0.985);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  0% { opacity: 0; transform: translateY(6px) scale(0.985); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .apex-tx-enter {
   animation: apex-tx-flash 180ms var(--ease-smooth) both;
 }
 
-/* Safe-area bottom spacing for notched mobile devices */
 .pb-safe {
   padding-bottom: max(0.35rem, env(safe-area-inset-bottom));
 }
 
-/* Custom sleek scrollbar for high-density financial tables */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.28); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 0.5); }
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.28);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.5);
-}
-
-/* Respect user motion preferences strictly */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
@@ -91,19 +96,19 @@
   }
 }
 
-/* Print styles for official invoices, vouchers, and financial reports */
 @media print {
-  .no-print {
-    display: none !important;
-  }
-  body {
-    background: #ffffff !important;
-    color: #0f172a !important;
-  }
-  .print-container {
-    box-shadow: none !important;
-    border: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
+  .no-print { display: none !important; }
+  body { background: #ffffff !important; color: #0f172a !important; }
+  .print-container { box-shadow: none !important; border: none !important; margin: 0 !important; padding: 0 !important; }
 }
+
+/* Brand-token bridge for legacy teal primary utility classes. */
+.text-teal-600 { color: #1D4ED8 !important; }
+.text-teal-700 { color: #1E40AF !important; }
+.bg-teal-600 { background-color: #1D4ED8 !important; }
+.bg-teal-700 { background-color: #1E40AF !important; }
+.bg-teal-50 { background-color: #EFF6FF !important; }
+.border-teal-600 { border-color: #1D4ED8 !important; }
+.ring-teal-600 { --tw-ring-color: #1D4ED8 !important; }
+.hover\\:bg-teal-700:hover { background-color: #1E40AF !important; }
+.hover\\:text-teal-700:hover { color: #1E40AF !important; }
