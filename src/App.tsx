@@ -1658,16 +1658,16 @@ export default function App() {
           </button>
           <button
             type="button"
-            onClick={() => navigate('vouchers', 'new-voucher', 'acc-new-voucher')}
-            aria-current={activeModule === 'vouchers' ? 'page' : undefined}
+            onClick={() => navigate('inventory', undefined, 'inv-products')}
+            aria-current={activeModule === 'inventory' ? 'page' : undefined}
             className={`flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${
               activeModule === 'vouchers'
                 ? 'text-blue-700 dark:text-blue-400'
                 : 'text-slate-500 dark:text-slate-400'
             }`}
           >
-            <BookOpen className="w-4 h-4" />
-            <span>ثبت سند</span>
+            <Package className="w-4 h-4" />
+            <span>انبار</span>
           </button>
           <button
             type="button"
@@ -1684,16 +1684,16 @@ export default function App() {
           </button>
           <button
             type="button"
-            onClick={() => navigate('treasury', undefined, 'trs-cheques')}
-            aria-current={activeModule === 'treasury' ? 'page' : undefined}
+            onClick={() => navigate('reports', undefined, 'rep-trial')}
+            aria-current={activeModule === 'reports' ? 'page' : undefined}
             className={`flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${
               activeModule === 'treasury'
                 ? 'text-blue-700 dark:text-blue-400'
                 : 'text-slate-500 dark:text-slate-400'
             }`}
           >
-            <Landmark className="w-4 h-4" />
-            <span>خزانه</span>
+            <BarChart3 className="w-4 h-4" />
+            <span>گزارش‌ها</span>
           </button>
           <button
             type="button"
