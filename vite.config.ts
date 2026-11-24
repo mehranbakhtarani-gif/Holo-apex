@@ -21,8 +21,8 @@ export default defineConfig(() => {
           name: 'هلو شرکتی Apex — سامانه جامع حسابداری',
           short_name: 'هلو Apex',
           description: 'سامانه جامع حسابداری شرکتی با هسته هلو Apex، داشبورد مدیریت مالی و گزارش‌گیری پیشرفته',
-          theme_color: '#0f766e',
-          background_color: '#f8fafc',
+          theme_color: '#1D4ED8',
+          background_color: '#F1F5F9',
           display: 'standalone',
           orientation: 'any',
           dir: 'rtl',
@@ -30,44 +30,14 @@ export default defineConfig(() => {
           start_url: deploymentBase,
           scope: deploymentBase,
           icons: [
-            {
-              src: '/pwa-192x192.png',
-              sizes: '192x192',
-              type: 'image/png',
-              purpose: 'any',
-            },
-            {
-              src: '/pwa-512x512.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'any',
-            },
-            {
-              src: '/pwa-maskable-512x512.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'maskable',
-            },
+            { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+            { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+            { src: '/pwa-maskable-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           ],
           shortcuts: [
-            {
-              name: 'فاکتور فروش (F2)',
-              short_name: 'فروش',
-              url: '/?view=invoices&action=new-sale',
-              icons: [{ src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' }],
-            },
-            {
-              name: 'ثبت سند حسابداری (F3)',
-              short_name: 'سند جدید',
-              url: '/?view=vouchers&action=new-voucher',
-              icons: [{ src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' }],
-            },
-            {
-              name: 'خزانه‌داری و چک (F7)',
-              short_name: 'چک‌ها',
-              url: '/?view=treasury',
-              icons: [{ src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' }],
-            },
+            { name: 'فاکتور فروش (F2)', short_name: 'فروش', url: '/?view=invoices&action=new-sale', icons: [{ src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' }] },
+            { name: 'ثبت سند حسابداری (F3)', short_name: 'سند جدید', url: '/?view=vouchers&action=new-voucher', icons: [{ src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' }] },
+            { name: 'خزانه‌داری و چک (F7)', short_name: 'چک‌ها', url: '/?view=treasury', icons: [{ src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' }] },
           ],
         },
         workbox: {
@@ -77,85 +47,38 @@ export default defineConfig(() => {
           maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
           globPatterns: ['**/*.{js,css,html,ico,png,jpg,jpeg,webp,svg,woff,woff2,json}'],
           navigateFallback: 'index.html',
-          navigateFallbackDenylist: [/^\/__\/auth/, /^\/api\//],
+          navigateFallbackDenylist: [/^\\/__\\/auth/, /^\\/api\\//],
           runtimeCaching: [
+            { urlPattern: /^https:\\/\\/(firestore|identitytoolkit|securetoken)\\.googleapis\\.com\\/.*/i, handler: 'NetworkOnly' },
             {
-              urlPattern: /^https:\/\/(firestore|identitytoolkit|securetoken)\.googleapis\.com\/.*/i,
-              handler: 'NetworkOnly',
-            },
-            {
-              urlPattern: /\/api\/fx\/rates/i,
+              urlPattern: /\\/api\\/fx\\/rates/i,
               handler: 'StaleWhileRevalidate',
-              options: {
-                cacheName: 'apex-fx-rates-cache',
-                expiration: {
-                  maxEntries: 8,
-                  maxAgeSeconds: 60 * 60 * 24 * 7,
-                },
-                cacheableResponse: {
-                  statuses: [0, 200],
-                },
-              },
+              options: { cacheName: 'apex-fx-rates-cache', expiration: { maxEntries: 8, maxAgeSeconds: 60 * 60 * 24 * 7 }, cacheableResponse: { statuses: [0, 200] } },
             },
             {
-              urlPattern: /\/src\/assets\/.*\.(?:png|jpg|jpeg|svg|webp)$/i,
+              urlPattern: /\\/src\\/assets\\/.*\\.(?:png|jpg|jpeg|svg|webp)$/i,
               handler: 'CacheFirst',
-              options: {
-                cacheName: 'apex-local-assets-cache',
-                expiration: {
-                  maxEntries: 40,
-                  maxAgeSeconds: 60 * 60 * 24 * 90,
-                },
-                cacheableResponse: {
-                  statuses: [0, 200],
-                },
-              },
+              options: { cacheName: 'apex-local-assets-cache', expiration: { maxEntries: 40, maxAgeSeconds: 60 * 60 * 24 * 90 }, cacheableResponse: { statuses: [0, 200] } },
             },
             {
-              urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+              urlPattern: /^https:\\/\\/fonts\\.googleapis\\.com\\/.*/i,
               handler: 'CacheFirst',
-              options: {
-                cacheName: 'google-fonts-cache',
-                expiration: {
-                  maxEntries: 15,
-                  maxAgeSeconds: 60 * 60 * 24 * 365,
-                },
-                cacheableResponse: {
-                  statuses: [0, 200],
-                },
-              },
+              options: { cacheName: 'google-fonts-cache', expiration: { maxEntries: 15, maxAgeSeconds: 60 * 60 * 24 * 365 }, cacheableResponse: { statuses: [0, 200] } },
             },
             {
-              urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+              urlPattern: /^https:\\/\\/fonts\\.gstatic\\.com\\/.*/i,
               handler: 'CacheFirst',
-              options: {
-                cacheName: 'gstatic-fonts-cache',
-                expiration: {
-                  maxEntries: 15,
-                  maxAgeSeconds: 60 * 60 * 24 * 365,
-                },
-                cacheableResponse: {
-                  statuses: [0, 200],
-                },
-              },
+              options: { cacheName: 'gstatic-fonts-cache', expiration: { maxEntries: 15, maxAgeSeconds: 60 * 60 * 24 * 365 }, cacheableResponse: { statuses: [0, 200] } },
             },
           ],
         },
-        devOptions: {
-          enabled: true,
-          type: 'module',
-        },
+        devOptions: { enabled: true, type: 'module' },
       }),
-      // Copies src/assets into dist/ so root-relative URLs like
-      // "/src/assets/images/..." (e.g. generate_image output) still resolve
-      // in production builds. Do not remove.
       {
         name: 'copy-unbundled-src-assets',
         apply: 'build',
         closeBundle(error?: Error): void {
-          if (error) {
-            return;
-          }
+          if (error) return;
           const distDir = path.resolve(__dirname, 'dist');
           const srcAssets = path.resolve(__dirname, 'src/assets');
           const distAssets = path.resolve(distDir, 'src/assets');
@@ -165,11 +88,7 @@ export default defineConfig(() => {
         },
       },
     ],
-    resolve: {
-      alias: {
-        '@': path.resolve(__dirname, '.'),
-      },
-    },
+    resolve: { alias: { '@': path.resolve(__dirname, '.') } },
     server: {
       hmr: process.env.DISABLE_HMR !== 'true',
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
