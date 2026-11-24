@@ -74,8 +74,8 @@ const SHAMSI_MONTHS = [
   { key: '12', name: 'اسفند' },
 ];
 
-const EXPENSE_COLORS = ['#0f766e', '#0284c7', '#d97706', '#dc2626', '#475569', '#059669'];
-const BANK_COLORS = ['#0f766e', '#0369a1', '#0d9488', '#334155', '#047857'];
+const EXPENSE_COLORS = ['#1D4ED8', '#4F46E5', '#D97706', '#DC2626', '#475569', '#059669'];
+const BANK_COLORS = ['#1D4ED8', '#0369A1', '#0891B2', '#334155', '#047857'];
 
 const VIEW_MODE_TABS: {
   id: DashboardViewMode;

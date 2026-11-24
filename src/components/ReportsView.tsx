@@ -547,8 +547,9 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ initialIntent, clearIn
 
             <div className="flex flex-wrap items-center gap-2 text-xs no-print">
               <div className="flex items-center gap-1.5">
-                <span className="text-slate-500">از تاریخ:</span>
+                <label htmlFor="reports-moroor-from" className="text-slate-500">از تاریخ:</label>
                 <input
+                  id="reports-moroor-from"
                   value={fromDate}
                   onChange={(e) => setFromDate(e.target.value)}
                   placeholder="1404/01/01"
@@ -556,8 +557,9 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ initialIntent, clearIn
                 />
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-slate-500">تا تاریخ:</span>
+                <label htmlFor="reports-moroor-to" className="text-slate-500">تا تاریخ:</label>
                 <input
+                  id="reports-moroor-to"
                   value={toDate}
                   onChange={(e) => setToDate(e.target.value)}
                   placeholder="1404/12/29"
@@ -1047,12 +1049,14 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ initialIntent, clearIn
                 />
               </div>
               <input
+                aria-label="از تاریخ دفتر کل"
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
                 placeholder="از تاریخ 1404/01/01"
                 className="w-32 px-2.5 py-1.5 font-code rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950"
               />
               <input
+                aria-label="تا تاریخ دفتر کل"
                 value={toDate}
                 onChange={(e) => setToDate(e.target.value)}
                 placeholder="تا تاریخ 1404/12/29"
@@ -1173,12 +1177,14 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ initialIntent, clearIn
                 />
               </div>
               <input
+                aria-label="از تاریخ صورتحساب طرف‌حساب"
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
                 placeholder="از تاریخ"
                 className="w-28 px-2.5 py-1.5 font-code rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950"
               />
               <input
+                aria-label="تا تاریخ صورتحساب طرف‌حساب"
                 value={toDate}
                 onChange={(e) => setToDate(e.target.value)}
                 placeholder="تا تاریخ"

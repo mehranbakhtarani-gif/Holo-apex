@@ -1,6 +1,6 @@
 # MASTER.md — Holo Apex Accounting PWA
 
-Version: 1.1  
+Version: 1.2  
 Status: Active implementation specification  
 Platform: React + TypeScript + Vite + Tailwind CSS + PWA  
 Language: Persian (fa-IR), RTL  
@@ -36,7 +36,7 @@ Modern Fintech Bento Grid with high-density accounting tables. Use blue as the p
 | Text secondary | #475569 | Helper text, dates and account codes |
 
 ### Contrast policy
-Target WCAG 2.2 AA: normal text >=4.5:1, large text >=3:1, and essential non-text controls >=3:1 where applicable. Primary 600 on white is 6.70:1; Primary 600 on Primary 50 is 6.16:1; Indigo 600 on white is 6.29:1. Use the darker semantic text tokens above on tinted semantic surfaces. Brighter semantic 600 colors are accent/icon colors and must not be assumed to pass normal-text contrast. AAA (7:1 for normal text) is a bonus target where feasible, not a blanket claim.
+Target WCAG 2.2 AA: normal text >=4.5:1, large text >=3:1, and essential non-text controls >=3:1 where applicable. Text primary #0F172A on white measures 17.85:1 (AAA); text secondary #475569 on white measures 7.58:1 (AAA); Primary 600 #1D4ED8 on white measures 6.70:1 (AA); Indigo 600 #4F46E5 on white measures 6.29:1 (AA); dark blue #1E40AF on Primary 50 measures 8.01:1 (AAA). Primary 600 on white is 6.70:1; Primary 600 on Primary 50 is 6.16:1; Indigo 600 on white is 6.29:1. Use the darker semantic text tokens above on tinted semantic surfaces. Brighter semantic 600 colors are accent/icon colors and must not be assumed to pass normal-text contrast. AAA (7:1 for normal text) is a bonus target where feasible, not a blanket claim.
 
 ## 3. Typography and numeric data
 Use Vazirmatn weights 400, 500, 700 and 800. Use IBM Plex Mono only for Latin codes or fixed-width technical identifiers where appropriate. Persian financial values remain Vazirmatn with tabular numerals.
@@ -58,10 +58,10 @@ Use a 4px base spacing scale with primary rhythm at 8px. Card padding: 16px mobi
 Desktop (>=768px): right-side collapsible navigation, sticky table headers, dense data tables and Bento dashboard.  
 Mobile (<768px): fixed bottom navigation for dashboard, invoice, inventory/import and reports; quick-action FAB; one-hand-friendly controls. Convert invoice and voucher rows to compact two-column cards. Keep all important fields visible without page-level horizontal scrolling. Any unavoidable wide comparison table may scroll only inside its own bounded container.
 
-Breakpoints: 320–359 small mobile; 360–767 mobile; 768–1023 tablet; 1024–1279 laptop; >=1280 desktop.
+Breakpoints: 320–359 small mobile; 360–767 mobile; 768–1023 tablet; 1024–1279 laptop; >=1280 desktop. A runtime enhancer assigns accessible column labels from table headers, makes existing data tables render as two-column cards below 768px, and keeps wide/headerless tables in bounded scroll regions. It observes newly mounted module content without reparenting React-owned nodes.
 
 ## 5. Interaction and accessibility
-Every interactive target >=44x44px with >=8px separation. Provide visible focus, active, disabled, loading, success and error states. Use 150–300ms transitions and respect prefers-reduced-motion. Use skeleton loaders for data loading rather than blocking full-screen spinners. Labels must remain visible; placeholders are not labels. Never communicate status through color alone.
+Every interactive target >=44x44px with >=8px separation. Global CSS enforces 44px minimum control hit areas; runtime grouping adds an 8px gap to adjacent control groups. Provide visible focus, active, disabled, loading, success and error states. Use 150–300ms transitions and respect prefers-reduced-motion. Use skeleton loaders for data loading rather than blocking full-screen spinners. Labels must remain visible; placeholders are not labels. Never communicate status through color alone.
 
 ## 6. Financial workflows and semantic colors
 - Incoming funds, sales and positive balances: Success.
@@ -139,3 +139,12 @@ Preserve the existing modules: dashboard, invoices, vouchers, audit, accounts, p
 
 ### Release evidence
 The checklist in section 11 is a release gate, not an assumption. Mark an item complete only after checking the relevant module and viewport. A successful production build does not prove responsive, contrast, keyboard or screen-reader compliance.
+
+
+## 13. Implemented shared UI layer (2026-11-25)
+- `ResponsiveTableEnhancer` is mounted once in the application shell. It observes dynamically mounted tables, reads the most complete header row, adds per-cell `data-label` values, and marks summary/colspan rows separately. It never changes table data or React component structure.
+- Existing table parent containers become labelled, keyboard-focusable scroll regions. Tables with readable headers become mobile card grids below 768px; headerless or explicitly skipped tables remain bounded scroll regions.
+- Existing flex/grid control groups with multiple direct interactive children receive an 8px gap class. Icon-only buttons with a title receive a matching accessible name when one is missing.
+- The application shell uses the approved blue primary instead of the old teal accent, removes the decorative dark radial gradient, and preserves the existing mobile quick-navigation actions.
+- Dashboard chart series use the financial palette. Border radii and elevation map to the design tokens.
+- The release checklist deliberately leaves visual viewport testing, complex table review, screen-reader testing and production verification unchecked until performed in a real browser. A successful TypeScript/build check alone is not proof of full WCAG conformance.
