@@ -1660,8 +1660,8 @@ export default function App() {
             type="button"
             onClick={() => navigate('inventory', undefined, 'inv-products')}
             aria-current={activeModule === 'inventory' ? 'page' : undefined}
-            className={`flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${
-              activeModule === 'vouchers'
+            className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-lg text-[10px] font-semibold transition-colors ${
+              activeModule === 'inventory'
                 ? 'text-blue-700 dark:text-blue-400'
                 : 'text-slate-500 dark:text-slate-400'
             }`}
@@ -1673,7 +1673,7 @@ export default function App() {
             type="button"
             onClick={() => navigate('invoices', 'new-sale', 'inv-sale')}
             aria-current={activeModule === 'invoices' ? 'page' : undefined}
-            className={`flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${
+            className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-lg text-[10px] font-semibold transition-colors ${
               activeModule === 'invoices'
                 ? 'text-blue-700 dark:text-blue-400'
                 : 'text-slate-500 dark:text-slate-400'
@@ -1686,8 +1686,8 @@ export default function App() {
             type="button"
             onClick={() => navigate('reports', undefined, 'rep-trial')}
             aria-current={activeModule === 'reports' ? 'page' : undefined}
-            className={`flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${
-              activeModule === 'treasury'
+            className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-lg text-[10px] font-semibold transition-colors ${
+              activeModule === 'reports'
                 ? 'text-blue-700 dark:text-blue-400'
                 : 'text-slate-500 dark:text-slate-400'
             }`}
